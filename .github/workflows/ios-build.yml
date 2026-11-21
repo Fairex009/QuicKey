@@ -1,0 +1,65 @@
+name: Build unsigned QuicKey IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'QuicKeyApp/**'
+      - 'QuicKeyKeyboard/**'
+      - 'project.yml'
+      - '.github/workflows/ios-build.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: iOS device build, no signing
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate --spec project.yml
+      - name: Build app and keyboard extension
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project QuicKey.xcodeproj \
+            -scheme QuicKey \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$PWD/.derivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            'CODE_SIGN_IDENTITY=' \
+            build
+      - name: Verify embedded keyboard extension and package unsigned IPA
+        run: |
+          set -euo pipefail
+          APP="$PWD/.derivedData/Build/Products/Release-iphoneos/QuicKey.app"
+          EXT="$APP/PlugIns/QuicKeyKeyboard.appex"
+          test -d "$APP" || { echo 'Missing host .app'; exit 1; }
+          test -d "$EXT" || { echo 'Missing embedded keyboard .appex'; exit 1; }
+          test -f "$EXT/QuicKeyKeyboard" || { echo 'Missing keyboard executable'; exit 1; }
+          TYPE=$(/usr/libexec/PlistBuddy -c 'Print NSExtension:NSExtensionPointIdentifier' "$EXT/Info.plist")
+          test "$TYPE" = 'com.apple.keyboard-service' || { echo 'Wrong extension type'; exit 1; }
+          ACCESS=$(/usr/libexec/PlistBuddy -c 'Print NSExtension:NSExtensionAttributes:RequestsOpenAccess' "$EXT/Info.plist")
+          test "$ACCESS" = 'false' || { echo 'Unexpected Full Access requirement'; exit 1; }
+          mkdir -p dist/Payload
+          cp -R "$APP" dist/Payload/
+          (cd dist && zip -qr QuicKey-v0.1-unsigned.ipa Payload)
+          unzip -l dist/QuicKey-v0.1-unsigned.ipa | grep -q 'QuicKeyKeyboard.appex/Info.plist'
+          echo 'PASS: compiled app contains keyboard extension.'
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: QuicKey-v0.1-unsigned-IPA
+          path: dist/QuicKey-v0.1-unsigned.ipa
+          if-no-files-found: error
+          retention-days: 14

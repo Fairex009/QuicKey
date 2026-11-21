@@ -1,0 +1,13 @@
+.DS_Store
+QuicKey.xcodeproj/
+.derivedData/
+build/
+dist/
+*.ipa
+*.mobileprovision
+*.p12
+*.p8
+*.pem
+*.key
+*.cer
+*.pairing

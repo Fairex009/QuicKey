@@ -1,0 +1,39 @@
+name: QuicKey
+options:
+  bundleIdPrefix: org.quickey.prototype
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    CODE_SIGN_STYLE: Automatic
+    GENERATE_INFOPLIST_FILE: NO
+targets:
+  QuicKey:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: QuicKeyApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.quickey.prototype
+        INFOPLIST_FILE: QuicKeyApp/Info.plist
+    dependencies:
+      - target: QuicKeyKeyboard
+        embed: true
+    scheme:
+      gatherCoverageData: false
+  QuicKeyKeyboard:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: QuicKeyKeyboard
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.quickey.prototype.keyboard
+        INFOPLIST_FILE: QuicKeyKeyboard/Info.plist
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
