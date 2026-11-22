@@ -22,6 +22,15 @@ assert "fastDeepPrefix" in commands and "cmd.deep:" in commands
 assert "func newChat(" in commands and "func composeMulti(" in commands and "func handle(" in commands
 for key in ["quickey-page-", "quickey-role-", "quickey-digit-", "quickey-target-insert", "quickey-start-chat", "quickey-recent-paste-", "quickey-recent-remove-"]:
     assert key in keyboard, key
+assert (root / "QuicKeyKeyboard/KeyboardPreferences.swift").is_file()
+assert (root / "scripts/preferences_checks.swift").is_file()
+assert 'preferences.tabOrder.map' in keyboard
+assert 'quickey-settings-open' in keyboard and 'quickey-settings-done' in keyboard
+assert 'case .settings: buildSettingsPage()' in keyboard
+assert 'preferences.includeRoleByDefault' in keyboard
+assert 'preferences.fontSize.multiplier' in keyboard
+assert 'isPendingStartContinuation()' in keyboard
+assert "QuicKeyKeyboard/KeyboardPreferences.swift scripts/preferences_checks.swift" in workflow
 assert "promptHistory.saveReplacing(" in keyboard
 assert "insertTracked(" in keyboard
 assert "quickey-delete-unit" in keyboard and "quickey-clear-generated" in keyboard
