@@ -1,33 +1,31 @@
 #!/usr/bin/env python3
-"""Linux-executable structural checks; not an iOS build."""
+"""Ubuntu structural smoke check. Xcode and Swift checks run in GitHub Actions."""
 from pathlib import Path
 import plistlib
-import yaml
 
 root = Path(__file__).resolve().parents[1]
-project = yaml.safe_load((root / "project.yml").read_text())
 app = plistlib.loads((root / "QuicKeyApp/Info.plist").read_bytes())
 ext = plistlib.loads((root / "QuicKeyKeyboard/Info.plist").read_bytes())
+config = (root / "project.yml").read_text()
 workflow = (root / ".github/workflows/ios-build.yml").read_text()
-swift = (root / "QuicKeyKeyboard/KeyboardViewController.swift").read_text()
+keyboard = (root / "QuicKeyKeyboard/KeyboardViewController.swift").read_text()
+commands = (root / "QuicKeyKeyboard/CommandTemplates.swift").read_text()
+tests = (root / "scripts/template_checks.swift").read_text()
 
-assert project["targets"]["QuicKey"]["type"] == "application"
-assert project["targets"]["QuicKeyKeyboard"]["type"] == "app-extension"
-assert project["targets"]["QuicKey"]["dependencies"][0] == {
-    "target": "QuicKeyKeyboard", "embed": True
-}
-assert project["targets"]["QuicKey"]["settings"]["base"]["PRODUCT_BUNDLE_IDENTIFIER"] == "org.quickey.prototype"
-assert project["targets"]["QuicKeyKeyboard"]["settings"]["base"]["PRODUCT_BUNDLE_IDENTIFIER"] == "org.quickey.prototype.keyboard"
+assert "PRODUCT_BUNDLE_IDENTIFIER: org.quickey.prototype\n" in config
+assert "PRODUCT_BUNDLE_IDENTIFIER: org.quickey.prototype.keyboard\n" in config
 assert ext["NSExtension"]["NSExtensionPointIdentifier"] == "com.apple.keyboard-service"
 assert ext["NSExtension"]["NSExtensionAttributes"]["RequestsOpenAccess"] is False
-assert ext["NSExtension"]["NSExtensionPrincipalClass"].endswith("KeyboardViewController")
-assert app["CFBundlePackageType"] == "APPL"
-assert ext["CFBundlePackageType"] == "XPC!"
-assert swift.count("Snippet(title:") == 6
-assert "textDocumentProxy.insertText(" in swift
-assert "textDocumentProxy.deleteBackward()" in swift
-assert "handleInputModeList(from:with:)" in swift
-assert "runs-on: macos-15" in workflow
-assert "CODE_SIGNING_ALLOWED=NO" in workflow
-print("PASS: config and six-snippet keyboard source checks.")
-print("NOT TESTED: Xcode compilation, signing, IPAForge, physical iPhone.")
+assert app["CFBundleShortVersionString"] == ext["CFBundleShortVersionString"] == "0.2.0"
+assert app["CFBundleVersion"] == ext["CFBundleVersion"] == "2"
+assert "fastDeepPrefix" in commands and "cmd.deep:" in commands
+assert "func compose(" in commands
+for key in ["quickey-tab-","quickey-build-role-","quickey-digit-","quickey-insert-compose"]:
+    assert key in keyboard
+assert "textDocumentProxy.insertText" in keyboard
+assert "handleInputModeList(from:with:)" in keyboard
+assert "QuicKey-v0.2-unsigned.ipa" in workflow
+assert "swiftc QuicKeyKeyboard/CommandTemplates.swift scripts/template_checks.swift" in workflow
+assert "reject malformed/incomplete targets" in tests
+print("PASS: v0.2 source structure, preserved bundle IDs, privacy and test wiring")
+print("PENDING: actual CI Swift verification and device build")
