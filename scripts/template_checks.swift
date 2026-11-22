@@ -40,6 +40,40 @@ struct TemplateChecks {
         }
         expect(CommandTemplates.handle([HandleTarget(kind: .pr, number: "1234567890")]),
                "git.handle PR #1234567890", "no arbitrary 8-digit limit")
+        // Persist exact generated prompts in a keyboard-private UserDefaults suite.
+        let suiteName = "QuicKeyHistoryTests." + UUID().uuidString
+        guard let isolated = UserDefaults(suiteName: suiteName) else {
+            fatalError("Unable to create history test sandbox")
+        }
+        defer { isolated.removePersistentDomain(forName: suiteName) }
+        let recent = PromptHistory(defaults: isolated)
+        let whole = CommandTemplates.newChat(role: .cm1) + CommandTemplates.handle(mix)!
+        precondition(recent.all().isEmpty)
+        recent.save(whole)
+        precondition(recent.all()[0].text == whole)
+        precondition(PromptHistory(defaults: isolated).all()[0].text == whole)
+
+        // Simulate unrelated clipboard data: saved history must not depend on it.
+        isolated.set("Other copied text", forKey: "UnrelatedClipboardSimulation")
+        precondition(recent.all()[0].text == whole)
+        recent.save("git.handle PR #160")
+        recent.save(whole)
+        precondition(recent.all().count == 2)
+        precondition(recent.all()[0].text == whole)
+        for i in 1...12 { recent.save("git.handle Issue #\(i)") }
+        precondition(recent.all().count == 10)
+        precondition(recent.all()[0].text == "git.handle Issue #12")
+        precondition(recent.all().last!.text == "git.handle Issue #3")
+        let removed = recent.all().last!.id
+        recent.remove(id: removed)
+        precondition(recent.all().count == 9)
+        precondition(!recent.all().contains(where: { $0.id == removed }))
+        recent.save("")
+        precondition(recent.all().count == 9)
+        recent.clear()
+        precondition(recent.all().isEmpty)
+        print("PASS: private history persistence, deduplication, deletion, limit, clipboard independence")
+
         print("PASS: malformed and incomplete targets fail closed")
     }
 }
