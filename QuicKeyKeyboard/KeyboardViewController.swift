@@ -234,7 +234,7 @@ final class KeyboardViewController: UIInputViewController {
         switch page {
         case .handle: heightConstraint?.constant = previewExpanded ? 588 : 518
         case .settings: heightConstraint?.constant = 510
-        case .more: heightConstraint?.constant = 405
+        case .more: heightConstraint?.constant = 450
         case .recent: heightConstraint?.constant = 365
         default: heightConstraint?.constant = 294
         }
@@ -261,9 +261,16 @@ final class KeyboardViewController: UIInputViewController {
             DeletePlanner.matchesGeneratedSuffix(generated: activeGenerated,
                                                   beforeCursor: proxy.documentContextBeforeInput)
         let prior = sameContext ? activeGenerated : ""
+        let continuedStart = StartHandleContinuation.nextExpected(
+            expectedStart: pendingStartPrefix,
+            generated: activeGenerated,
+            sameDocument: activeDocumentID == proxy.documentIdentifier,
+            beforeCursor: proxy.documentContextBeforeInput,
+            inserted: text)
         proxy.insertText(text)
         activeDocumentID = proxy.documentIdentifier
         activeGenerated = prior + text
+        pendingStartPrefix = continuedStart
         promptHistory.saveReplacing(previous: sameContext ? prior : nil,
                                     with: activeGenerated)
         if clearArmed {
@@ -460,7 +467,7 @@ final class KeyboardViewController: UIInputViewController {
             key.addTarget(self, action: #selector(changeFontSize(_:)), for: .touchUpInside)
             return key
         }
-        list.addArrangedSubview(row(sizes, height: 38))
+        list.addArrangedSubview(row(sizes, height: 42))
 
         list.addArrangedSubview(label("Tab order · use arrows to move each tab"))
         for (index, tab) in preferences.tabOrder.enumerated() {
@@ -487,7 +494,7 @@ final class KeyboardViewController: UIInputViewController {
             line.spacing = 6
             up.widthAnchor.constraint(equalToConstant: 49).isActive = true
             down.widthAnchor.constraint(equalToConstant: 49).isActive = true
-            line.heightAnchor.constraint(equalToConstant: 34).isActive = true
+            line.heightAnchor.constraint(equalToConstant: 40).isActive = true
             list.addArrangedSubview(line)
         }
 
@@ -499,7 +506,7 @@ final class KeyboardViewController: UIInputViewController {
             key.addTarget(self, action: #selector(selectRole(_:)), for: .touchUpInside)
             return key
         }
-        list.addArrangedSubview(row(roles, height: 34))
+        list.addArrangedSubview(row(roles, height: 38))
 
         let included = button(preferences.includeRoleByDefault
                               ? "Handle default: Role ON ✓" : "Handle default: Role OFF",
@@ -882,11 +889,9 @@ final class KeyboardViewController: UIInputViewController {
               let text = CommandTemplates.composeMulti(role: selectedRole, targets: targets,
                                                        style: selectedStyle,
                                                        includeRole: includeRole) else { return }
-        let continuingStart = isPendingStartContinuation()
         insertTracked(text)
-        // Remain in the same Start-based text chain while the host still
-        // exposes its suffix. Later Handle insertions should not re-add role.
-        pendingStartPrefix = continuingStart ? activeGenerated : nil
+        // insertTracked advances the verified Start chain for all generated
+        // insertions, including Quick and Recent, not just this Handle path.
     }
 
     @objc private func insertNewChat() {
