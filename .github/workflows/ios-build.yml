@@ -11,6 +11,8 @@ on:
       - 'project.yml'
       - 'scripts/generate_app_icon.swift'
       - 'scripts/delete_checks.swift'
+      - 'QuicKeyKeyboard/KeyboardPreferences.swift'
+      - 'scripts/preferences_checks.swift'
       - '.github/workflows/ios-build.yml'
   pull_request:
     branches: [main]
@@ -35,6 +37,8 @@ jobs:
           swiftc QuicKeyKeyboard/DeletePlanner.swift scripts/delete_checks.swift -o /tmp/quickey-delete-checks
           /tmp/quickey-delete-checks
           /tmp/quickey-template-checks
+          swiftc QuicKeyKeyboard/KeyboardPreferences.swift scripts/preferences_checks.swift -o /tmp/quickey-preferences-checks
+          /tmp/quickey-preferences-checks
       - name: Validate scrollable preview and source structure
         run: python3 scripts/verify_source.py
       - name: Generate the 1024-pixel app icon
