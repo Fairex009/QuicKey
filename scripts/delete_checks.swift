@@ -45,6 +45,9 @@ struct DeleteChecks {
                    sameDocument: true, beforeCursor: fresh))
         precondition(StartHandleContinuation.isValid(expectedStart: fresh, generated: fresh,
                    sameDocument: true, beforeCursor: String(fresh.suffix(35))))
+        let chained = fresh + "git.handle PR #160" + "git.handle Issue #159"
+        precondition(StartHandleContinuation.isValid(expectedStart: chained, generated: chained,
+                   sameDocument: true, beforeCursor: String(chained.suffix(35))))
         precondition(!StartHandleContinuation.isValid(expectedStart: fresh,
                     generated: fresh + "extra", sameDocument: true, beforeCursor: fresh + "extra"))
         precondition(!StartHandleContinuation.isValid(expectedStart: fresh,
