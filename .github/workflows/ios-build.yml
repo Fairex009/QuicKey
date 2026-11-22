@@ -3,7 +3,7 @@ name: Build unsigned QuicKey IPA
 on:
   workflow_dispatch:
   push:
-    branches: [main, fix/keyboard-usability-v0.2.4]
+    branches: [main]
     paths:
       - 'QuicKeyApp/**'
       - 'QuicKeyKeyboard/**'
@@ -79,19 +79,23 @@ jobs:
           test "$MAIN_ID" = 'org.quickey.prototype'
           test "$EXT_ID" = 'org.quickey.prototype.keyboard'
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Info.plist")
-          test "$VERSION" = '0.2.4'
+          EXT_VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$EXT/Info.plist")
+          test "$VERSION" = "$EXT_VERSION"
+          BUILD=$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$APP/Info.plist")
+          EXT_BUILD=$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$EXT/Info.plist")
+          test "$BUILD" = "$EXT_BUILD"
           test -s "$APP/Assets.car" || { echo 'Missing compiled asset catalog'; exit 1; }
           ICON=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName' "$APP/Info.plist")
           test "$ICON" = 'AppIcon' || { echo "App icon not set: $ICON"; exit 1; }
           mkdir -p dist/Payload
           cp -R "$APP" dist/Payload/
-          (cd dist && zip -qr QuicKey-v0.2.4-unsigned.ipa Payload)
-          unzip -l dist/QuicKey-v0.2.4-unsigned.ipa | grep -q 'QuicKeyKeyboard.appex/Info.plist'
+          (cd dist && zip -qr QuicKey-unsigned.ipa Payload)
+          unzip -l dist/QuicKey-unsigned.ipa | grep -q 'QuicKeyKeyboard.appex/Info.plist'
           echo 'PASS: app, keyboard extension, preserved IDs, no Full Access.'
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
-          name: QuicKey-v0.2.4-unsigned-IPA
-          path: dist/QuicKey-v0.2.4-unsigned.ipa
+          name: QuicKey-unsigned-IPA
+          path: dist/QuicKey-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
