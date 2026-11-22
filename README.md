@@ -65,3 +65,7 @@ See `docs/v0.2.2-history.md` and `docs/v0.2.4-color-design.md` for the storage a
 ## Full scrollable Handle preview
 
 The Handle composer uses an internally scrollable, non-editable multiline text view rather than a five-line truncated label. It follows newly added PR/Issue numbers to the bottom while letting the user swipe up through every earlier line. The Compact/Expand control increases height on demand. When QuicKey can confirm that it inserted the immediately preceding Start template at the active cursor, Handle shows the complete combined Start + Handle command; otherwise it previews only the text that the Handle Insert button will add. The actual inserted text and existing app identifiers remain unchanged.
+
+### Safe clear behavior
+
+Clear operates in verified chunks of up to 64 characters, rechecking the iOS host text context after every chunk. If the host withholds sufficient context or the expected suffix stops matching, QuicKey stops deleting rather than risk erasing unrelated text. Recent history remains preserved. This is intentionally conservative; the word/command delete control remains available when host text access is restricted.

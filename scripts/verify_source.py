@@ -38,7 +38,8 @@ assert "userInterfaceStyle" in theme
 assert (root / "QuicKeyApp/Assets.xcassets/AppIcon.appiconset/Contents.json").is_file()
 assert (root / "scripts/generate_app_icon.swift").is_file()
 assert (root / "scripts/delete_checks.swift").is_file()
-assert "textDocumentProxy.insertText" in keyboard
+assert "proxy.insertText(text)" in keyboard
+assert "while !remaining.isEmpty" in keyboard
 assert "handleInputModeList(from:with:)" in keyboard
 assert "QuicKey-v0.2.4-unsigned.ipa" in workflow
 assert "swiftc QuicKeyKeyboard/CommandTemplates.swift QuicKeyKeyboard/PromptHistory.swift scripts/template_checks.swift" in workflow

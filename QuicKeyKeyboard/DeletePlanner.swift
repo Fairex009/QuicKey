@@ -44,9 +44,14 @@ enum DeletePlanner {
         return Array(generated).suffix(overlap).elementsEqual(Array(context).suffix(overlap))
     }
 
+    /// Only the verified overlap may be deleted. Limit each pass to 64
+    /// characters, then re-check iOS context before deleting any more.
     static func safeClearLength(generated: String, beforeCursor: String?) -> Int {
-        matchesGeneratedSuffix(generated: generated, beforeCursor: beforeCursor)
-            ? Array(generated).count : 0
+        guard let context = beforeCursor,
+              matchesGeneratedSuffix(generated: generated, beforeCursor: context) else {
+            return 0
+        }
+        return min(Array(generated).count, Array(context).count, 64)
     }
 }
 

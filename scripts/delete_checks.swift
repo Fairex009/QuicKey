@@ -21,6 +21,13 @@ struct DeleteChecks {
         precondition(DeletePlanner.matchesGeneratedSuffix(generated: a, beforeCursor: String(a.suffix(25))))
         precondition(!DeletePlanner.matchesGeneratedSuffix(generated: a, beforeCursor: "different text"))
         precondition(DeletePlanner.safeClearLength(generated: a, beforeCursor: nil) == 0)
+        let longText = String(repeating: "cmd.refresh system\n", count: 30)
+        precondition(DeletePlanner.safeClearLength(generated: longText,
+                           beforeCursor: String(longText.suffix(40))) == 40)
+        precondition(DeletePlanner.safeClearLength(generated: longText,
+                           beforeCursor: "unrelated") == 0)
+        precondition(DeletePlanner.safeClearLength(generated: longText,
+                           beforeCursor: longText) == 64)
         let startup = "res.cm1\n\ncmd.boot AGENTS.md\n\ncmd.deep:\n"
         let mixed = "git.handle PR #160, Issue #159, Issue #6"
         precondition(HandlePreviewText.composed(handle: mixed, generated: startup,

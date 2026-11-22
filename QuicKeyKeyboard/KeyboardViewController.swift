@@ -318,16 +318,20 @@ final class KeyboardViewController: UIInputViewController {
             render()
             return
         }
-        let count = DeletePlanner.safeClearLength(generated: activeGenerated,
-                                                  beforeCursor: proxy.documentContextBeforeInput)
-        guard count > 0 else {
-            render()
-            return
+        // iOS may expose only the last part of a long text field.
+        // Delete one *verified* chunk at a time, re-checking the context
+        // before every chunk. Stop rather than deleting unfamiliar text.
+        var remaining = activeGenerated
+        while !remaining.isEmpty {
+            let count = DeletePlanner.safeClearLength(
+                generated: remaining, beforeCursor: proxy.documentContextBeforeInput)
+            guard count > 0 else { break }
+            for _ in 0..<count { proxy.deleteBackward() }
+            remaining = String(remaining.dropLast(count))
         }
-        for _ in 0..<count { proxy.deleteBackward() }
-        // Keep the saved Recent entry, even after the current field is cleared.
-        activeGenerated = ""
-        activeDocumentID = nil
+        // Clearing the host field never clears the saved Recent archive.
+        activeGenerated = remaining
+        if remaining.isEmpty { activeDocumentID = nil }
         render()
     }
 
