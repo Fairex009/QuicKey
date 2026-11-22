@@ -176,8 +176,8 @@ final class KeyboardViewController: UIInputViewController {
         let next = button("🌐 Next", id: "quickey-next", fontSize: 13)
         next.addTarget(self, action: #selector(handleInputModeList(from:with:)),
                        for: .allTouchEvents)
-        let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
-            as? String ?? "?"
+        let currentVersion = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
+                              as? String) ?? "?"
         let heading = label("QuicKey \(currentVersion)", size: 12)
         heading.textAlignment = .center
 
