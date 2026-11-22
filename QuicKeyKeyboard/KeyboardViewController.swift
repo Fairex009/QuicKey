@@ -882,8 +882,11 @@ final class KeyboardViewController: UIInputViewController {
               let text = CommandTemplates.composeMulti(role: selectedRole, targets: targets,
                                                        style: selectedStyle,
                                                        includeRole: includeRole) else { return }
+        let continuingStart = isPendingStartContinuation()
         insertTracked(text)
-        pendingStartPrefix = nil
+        // Remain in the same Start-based text chain while the host still
+        // exposes its suffix. Later Handle insertions should not re-add role.
+        pendingStartPrefix = continuingStart ? activeGenerated : nil
     }
 
     @objc private func insertNewChat() {
