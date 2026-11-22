@@ -47,6 +47,17 @@ struct TemplateChecks {
         }
         defer { isolated.removePersistentDomain(forName: suiteName) }
         let recent = PromptHistory(defaults: isolated)
+        // Save *at insertion*, including Start Chat alone, then merge a
+        // subsequent generated Handle into one recent complete prompt.
+        let startOnly = CommandTemplates.newChat(role: .eng)
+        recent.saveReplacing(previous: nil, with: startOnly)
+        precondition(recent.all().count == 1)
+        recent.saveReplacing(previous: startOnly, with: startOnly + "git.handle PR #160")
+        precondition(recent.all().count == 1)
+        precondition(recent.all()[0].text == startOnly + "git.handle PR #160")
+        recent.removeText(startOnly + "git.handle PR #160")
+        precondition(recent.all().isEmpty)
+
         let whole = CommandTemplates.newChat(role: .cm1) + CommandTemplates.handle(mix)!
         precondition(recent.all().isEmpty)
         recent.save(whole)

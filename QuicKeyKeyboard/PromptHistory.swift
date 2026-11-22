@@ -36,6 +36,23 @@ struct PromptHistory {
         return entries
     }
 
+    /// Atomic history replacement while the user composes one prompt.
+    /// Retains the original v0.2.3 UserDefaults key for in-place upgrades.
+    @discardableResult
+    func saveReplacing(previous: String?, with current: String) -> [RecentPrompt] {
+        guard !current.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              current.utf8.count <= 16_384 else { return all() }
+        var entries = all().filter { $0.text != current && $0.text != previous }
+        entries.insert(RecentPrompt(id: UUID(), text: current, createdAt: Date()), at: 0)
+        entries = Array(entries.prefix(Self.maximumEntries))
+        persist(entries)
+        return entries
+    }
+
+    func removeText(_ text: String) {
+        persist(all().filter { $0.text != text })
+    }
+
     func remove(id: UUID) {
         persist(all().filter { $0.id != id })
     }

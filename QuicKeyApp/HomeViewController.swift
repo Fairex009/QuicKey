@@ -24,7 +24,7 @@ final class HomeViewController: UIViewController {
         content.addArrangedSubview(header)
 
         let subtitle = UILabel()
-        subtitle.text = "QuicKey 0.2.3 is an offline FAIREX command composer. It inserts text into other apps; it does not submit or execute commands."
+        subtitle.text = "QuicKey 0.2.4 is an offline FAIREX command composer. It inserts text into other apps; it does not submit or execute commands."
         subtitle.numberOfLines = 0
         subtitle.textColor = .secondaryLabel
         content.addArrangedSubview(subtitle)
@@ -32,7 +32,7 @@ final class HomeViewController: UIViewController {
         let steps = UILabel()
         steps.numberOfLines = 0
         steps.font = .preferredFont(forTextStyle: .body)
-        steps.text = "1. Settings > General > Keyboard > Keyboards > QuicKey.\n2. Leave Allow Full Access OFF.\n3. Select QuicKey using the globe key in a normal text field.\n4. Start: select a role and insert the complete new-chat setup in one tap.\n5. Handle: select PR/Issue, type the number, + Add for extra targets, and Insert.\n6. Quick: common command prefixes.\n7. Recent: reuse generated prompts without relying on the clipboard.\n8. More: single-role entry and additional commands."
+        steps.text = "1. Settings > General > Keyboard > Keyboards > QuicKey.\n2. Leave Allow Full Access OFF.\n3. Select QuicKey using the globe key in a normal text field.\n4. Start: select a role and insert the complete new-chat setup in one tap.\n5. Handle: select PR/Issue, type the number, + Add for extra targets, and Insert.\n6. Quick: common command prefixes.\n7. Recent: automatically stores every QuicKey-generated insertion, including Start Chat; it cannot capture manual edits or detect sending.\n8. Top right: delete character, delete word/command (hold to repeat), or confirm clear of QuicKey-generated text.\n9. More: single-role entry and additional commands."
         content.addArrangedSubview(steps)
 
         let label = UILabel()
