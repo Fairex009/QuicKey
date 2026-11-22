@@ -568,11 +568,11 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func isPendingStartContinuation() -> Bool {
-        guard let prefix = pendingStartPrefix,
-              activeGenerated == prefix,
-              activeDocumentID == textDocumentProxy.documentIdentifier else { return false }
-        return DeletePlanner.matchesGeneratedSuffix(
-            generated: prefix, beforeCursor: textDocumentProxy.documentContextBeforeInput)
+        StartHandleContinuation.isValid(
+            expectedStart: pendingStartPrefix,
+            generated: activeGenerated,
+            sameDocument: activeDocumentID == textDocumentProxy.documentIdentifier,
+            beforeCursor: textDocumentProxy.documentContextBeforeInput)
     }
 
     /// Only explicitly generated QuicKey prompts are stored in private defaults.
