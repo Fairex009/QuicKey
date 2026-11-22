@@ -261,13 +261,9 @@ final class KeyboardViewController: UIInputViewController {
         }
 
         if tracked {
-            let previous = activeGenerated
             activeGenerated = String(activeGenerated.dropLast(min(bounded, activeGenerated.count)))
-            if activeGenerated.isEmpty {
-                promptHistory.removeText(previous)
-            } else {
-                promptHistory.saveReplacing(previous: previous, with: activeGenerated)
-            }
+            // Recent archives already-inserted generated text. Deleting from
+            // the host field must never silently destroy that saved history.
         } else {
             activeGenerated = ""
             activeDocumentID = nil
@@ -328,7 +324,7 @@ final class KeyboardViewController: UIInputViewController {
             return
         }
         for _ in 0..<count { proxy.deleteBackward() }
-        promptHistory.removeText(activeGenerated)
+        // Keep the saved Recent entry, even after the current field is cleared.
         activeGenerated = ""
         activeDocumentID = nil
         render()
