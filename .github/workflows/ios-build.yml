@@ -3,12 +3,14 @@ name: Build unsigned QuicKey IPA
 on:
   workflow_dispatch:
   push:
-    branches: [main, feature/fairex-keyboard-v0.2]
+    branches: [main, fix/keyboard-usability-v0.2.4]
     paths:
       - 'QuicKeyApp/**'
       - 'QuicKeyKeyboard/**'
       - 'scripts/template_checks.swift'
       - 'project.yml'
+      - 'scripts/generate_app_icon.swift'
+      - 'scripts/delete_checks.swift'
       - '.github/workflows/ios-build.yml'
   pull_request:
     branches: [main]
@@ -30,7 +32,16 @@ jobs:
         run: |
           set -euo pipefail
           swiftc QuicKeyKeyboard/CommandTemplates.swift QuicKeyKeyboard/PromptHistory.swift scripts/template_checks.swift -o /tmp/quickey-template-checks
+          swiftc QuicKeyKeyboard/DeletePlanner.swift scripts/delete_checks.swift -o /tmp/quickey-delete-checks
+          /tmp/quickey-delete-checks
           /tmp/quickey-template-checks
+      - name: Validate scrollable preview and source structure
+        run: python3 scripts/verify_source.py
+      - name: Generate the 1024-pixel app icon
+        run: |
+          set -euo pipefail
+          swift scripts/generate_app_icon.swift QuicKeyApp/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
+          sips -g pixelWidth -g pixelHeight QuicKeyApp/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png
       - name: Generate Xcode project
         run: xcodegen generate --spec project.yml
       - name: Build app and keyboard extension
@@ -64,16 +75,19 @@ jobs:
           test "$MAIN_ID" = 'org.quickey.prototype'
           test "$EXT_ID" = 'org.quickey.prototype.keyboard'
           VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Info.plist")
-          test "$VERSION" = '0.2.3'
+          test "$VERSION" = '0.2.4'
+          test -s "$APP/Assets.car" || { echo 'Missing compiled asset catalog'; exit 1; }
+          ICON=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName' "$APP/Info.plist")
+          test "$ICON" = 'AppIcon' || { echo "App icon not set: $ICON"; exit 1; }
           mkdir -p dist/Payload
           cp -R "$APP" dist/Payload/
-          (cd dist && zip -qr QuicKey-v0.2.3-unsigned.ipa Payload)
-          unzip -l dist/QuicKey-v0.2.3-unsigned.ipa | grep -q 'QuicKeyKeyboard.appex/Info.plist'
+          (cd dist && zip -qr QuicKey-v0.2.4-unsigned.ipa Payload)
+          unzip -l dist/QuicKey-v0.2.4-unsigned.ipa | grep -q 'QuicKeyKeyboard.appex/Info.plist'
           echo 'PASS: app, keyboard extension, preserved IDs, no Full Access.'
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
-          name: QuicKey-v0.2.3-unsigned-IPA
-          path: dist/QuicKey-v0.2.3-unsigned.ipa
+          name: QuicKey-v0.2.4-unsigned-IPA
+          path: dist/QuicKey-v0.2.4-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
