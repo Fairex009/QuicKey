@@ -889,7 +889,9 @@ final class KeyboardViewController: UIInputViewController {
     @objc private func insertNewChat() {
         let prefix = CommandTemplates.newChat(role: selectedRole)
         insertTracked(prefix)
-        pendingStartPrefix = prefix
+        // Track the full insertion chain, not only this prefix, so a Start
+        // inserted after earlier QuicKey text still avoids a duplicate role.
+        pendingStartPrefix = activeGenerated
         // Start Chat already contains the role and cmd.deep: prefix. When the
         // operator next opens Handle, generate only "git.handle ..." targets.
         selectedStyle = .direct
