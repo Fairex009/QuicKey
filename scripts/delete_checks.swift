@@ -56,6 +56,23 @@ struct DeleteChecks {
                     generated: fresh, sameDocument: true, beforeCursor: "Unrelated text"))
         precondition(!StartHandleContinuation.isValid(expectedStart: nil,
                     generated: fresh, sameDocument: true, beforeCursor: fresh))
+        let quick = "cmd.refresh system"
+        let continued = StartHandleContinuation.nextExpected(
+            expectedStart: fresh, generated: fresh, sameDocument: true,
+            beforeCursor: fresh, inserted: quick)
+        precondition(continued == fresh + quick)
+        let second = StartHandleContinuation.nextExpected(
+            expectedStart: continued, generated: continued ?? "",
+            sameDocument: true, beforeCursor: String((fresh + quick).suffix(38)),
+            inserted: "git.handle Issue #6")
+        precondition(second == fresh + quick + "git.handle Issue #6")
+        precondition(StartHandleContinuation.nextExpected(
+            expectedStart: fresh, generated: fresh, sameDocument: false,
+            beforeCursor: fresh, inserted: quick) == nil)
+        precondition(StartHandleContinuation.nextExpected(
+            expectedStart: fresh, generated: fresh, sameDocument: true,
+            beforeCursor: "Unrelated context", inserted: quick) == nil)
+        print("PASS: Start→Handle continuation and intervening Quick/Recent insertion")
         print("PASS: Start→Handle continuation guard and standalone-default fallback")
         print("PASS: full multiline Handle preview, combined Start+Handle, safe fallback")
 
