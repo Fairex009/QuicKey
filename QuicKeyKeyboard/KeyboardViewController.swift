@@ -173,7 +173,15 @@ final class KeyboardViewController: UIInputViewController {
             item.removeFromSuperview()
         }
 
-        let next = button("🌐 Next", id: "quickey-next", fontSize: 13)
+        // Apple's system keyboard switcher: tap advances to the next
+        // enabled keyboard, while touch-and-hold opens the native picker.
+        // iOS does not allow a keyboard extension to list or activate a
+        // specifically named third-party keyboard programmatically.
+        let next = button("🌐 Next\nHold to choose", id: "quickey-next", fontSize: 11)
+        next.titleLabel?.numberOfLines = 2
+        next.titleLabel?.textAlignment = .center
+        next.accessibilityLabel = "Next keyboard. Hold to choose a keyboard."
+        next.accessibilityHint = "Tap for the next keyboard, or touch and hold to select from Apple's enabled keyboard list."
         next.addTarget(self, action: #selector(handleInputModeList(from:with:)),
                        for: .allTouchEvents)
         let currentVersion = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
@@ -209,8 +217,8 @@ final class KeyboardViewController: UIInputViewController {
         toolbar.axis = .horizontal
         toolbar.spacing = 4
         toolbar.distribution = .fill
-        next.widthAnchor.constraint(equalToConstant: 90).isActive = true
-        toolbar.heightAnchor.constraint(equalToConstant: 36).isActive = true
+        next.widthAnchor.constraint(equalToConstant: 96).isActive = true
+        toolbar.heightAnchor.constraint(equalToConstant: 40).isActive = true
         stack.addArrangedSubview(toolbar)
 
         let tabs = preferences.tabOrder.map { entry -> UIButton in
