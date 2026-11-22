@@ -1,47 +1,52 @@
-# QuicKey v0.1
+# QuicKey v0.2.3
 
-An experimental **offline six-command keyboard extension for iPhone and iPad**. Developed with no Mac and no paid Apple account.
+An **offline FAIREX command keyboard for iPhone and iPad**. It inserts reusable commands into text fields, without a Mac, paid Apple Developer membership, Full Access, or an extra iPhone sideloading app.
 
-**Current verification:** source checks on Linux only; compile/build, signing and installation require separate gates. **Never upload Apple credentials, keys, or profiles to this public repository.**
+> Status: v0.2.3 source, unsigned IPA, keyboard extension and command/history tests pass in GitHub Actions. Actual in-place upgrade and every control still require acceptance testing on the iPhone. Do not upload Apple passwords, profiles, private keys, pairing files or personal credentials to this public repo.
 
-## Feature test
+## Features
 
-Inside a compatible text field, switch to QuicKey, then tap **Hello** to insert "Hello from QuicKey!" or **Search** to insert "warehouse automation". The keyboard includes Translate, Review, Summarize, Sign-off, Delete and Next Keyboard buttons. It does not float over other apps, submit searches automatically, or work in protected password fields. Full Access is **OFF** by design.
+- **Start:** pick one of the five FAIREX roles and insert the exact new-chat template, including `cmd.boot AGENTS.md`, `pref.mode GOD`, session toggles, both refresh commands and `cmd.deep:`.
+- **Handle:** compose `git.handle PR #160, Issue #159, Issue #6` with any number of mixed PR and Issue targets. Choose Direct, Deep, or Fast+Deep; optionally include the role.
+- **Quick:** FAST+DEEP, Deep task, Batch ON, Git Handle prefixes and Refresh.
+- **Recent:** up to ten complete QuicKey-generated prompts, independent of copied clipboard text, with one-tap Paste, delete-one, and clear-all confirmation. Recent history is stored within the keyboard extension's private sandbox. It cannot capture manually edited or submitted text from another app.
+- **More:** direct role entry and additional documented controls.
+- **Visual semantics:** roles blue, PR teal, Issues amber, workflows violet, primary actions green, Recent lavender, delete red. Supports iOS light and dark appearance.
+- **Safety:** no network access in the keyboard, no automatic submit, no Full Access, and no operation or permission execution. Commands are text only.
 
-## Build on GitHub (free, unsigned)
+## Build and install the unsigned IPA
 
-Repository: https://github.com/Fairex009/QuicKey
+Repo: https://github.com/Fairex009/QuicKey
 
-1. On the Actions page, open **Build unsigned QuicKey IPA**, select the successful build from main. Pushes to main touching source also start a build.
-2. Download **QuicKey-v0.1-unsigned-IPA** from the run's Artifacts.
-3. Unzip the downloaded artifact to get "QuicKey-v0.1-unsigned.ipa".
-4. Do not mistake the unsigned IPA for an installable app: it still must be signed by your own Apple account. The CI workflow never asks for signing credentials.
+1. Open **Actions → Build unsigned QuicKey IPA**, and select the successful **main** build with version `0.2.3`.
+2. Under **Artifacts**, download `QuicKey-v0.2.3-unsigned-IPA`; unzip that artifact on Ubuntu to obtain `QuicKey-v0.2.3-unsigned.ipa`.
+3. The IPA is **unsigned** by design; it must be signed for your iPhone using your existing free Apple developer account, such as through IPAForge. GitHub Actions does not store or handle Apple credentials.
 
-The workflow compiles with XcodeGen and Xcode on GitHub's public macOS runner and checks that the keyboard .appex is present.
+IPAForge: https://github.com/IPAForge/ipaforge/releases . See its official [Install documentation](https://github.com/IPAForge/ipaforge/blob/main/docs/installing.md) and [install/update flow details](https://github.com/IPAForge/ipaforge/blob/main/docs/install-flows.md).
 
-## Linux installation, experimental
+On Ubuntu with IPAForge already installed:
 
-IPAForge: https://github.com/IPAForge/ipaforge/releases
+1. Keep the current QuicKey and SideStore installed on the iPhone; **do not uninstall them**.
+2. Plug in the iPhone via a working USB data cable, unlock it, and confirm Developer Mode and Trust if prompted.
+3. Start IPAForge, choose the same Apple ID and team that signed the currently installed QuicKey. Use **Install / Preload / your own IPA** to select the unsigned v0.2.3 IPA.
+4. Before confirming, inspect IPAForge's plan. It must identify QuicKey as an **upgrade of the existing app** and preserve its **single keyboard extension**, without asking to remove another app or revoke an existing certificate. If it proposes a separate app, stop.
+5. Confirm sign/install and wait for IPAForge to report success. On the iPhone, open QuicKey and verify version `0.2.3` in the host/keyboard UI.
+6. Open an ordinary text field in Notes or ChatGPT, switch to QuicKey, and test Start, Handle, Recent, Delete, and globe switching. Keep **Allow Full Access** disabled.
 
-Ubuntu prerequisites:
+IPAForge's documented free-account logic counts a same-identity update as a replacement that keeps its existing active-app slot, not an additional app. Different signing team / transformed bundle ID can change that. A free account still requires re-signing / refreshing approximately every **7 days**. Do not assume SideStore can refresh QuicKey while its Remote Pairing issue remains unfixed.
 
-    sudo apt update
-    sudo apt install -y usbmuxd libimobiledevice-utils usbutils
-    sudo systemctl restart usbmuxd
-    idevice_id -l
+## Acceptance test
 
-Unlock iPhone, connect USB data cable and trust the computer. Download the official IPAForge Linux build from its release page, inspect its provenance and install it. IPAForge is a **third-party, alpha-stage** installer that needs sensitive Apple authentication. Assess its security before signing in. Never share Apple password, 2FA code, private keys, pairing information or provisioning profiles in chat or on GitHub.
+1. **Start → CM1 → Start new chat**: exactly `res.cm1`, blank line, `cmd.boot AGENTS.md`, blank line, `pref.mode GOD`, `all.in.one ON`, `cmd.nonstop ON`, blank line, `cmd.refresh system`, `cmd.refresh role`, blank line, `cmd.deep:`.
+2. **Handle:** after Start, choose Direct / No role, add PR #160, Issue #159, Issue #6, and Insert. The final message ends with `git.handle PR #160, Issue #159, Issue #6` without duplicating the startup prefix.
+3. **Recent:** open, Paste the saved generated prompt into an empty text field, copy an unrelated sentence in another app, and Paste the saved prompt again. Both inserts must match. Clear one entry and verify others remain.
+4. Switch Light/Dark Appearance to inspect contrast and selection feedback. Test Delete and Next Keyboard.
+5. Confirm QuicKey is the existing updated app, not a second icon, and SideStore remains usable.
 
-In IPAForge, sign and install the unsigned IPA with your own **free Apple account**. The host app and keyboard extension must each be signed appropriately. Enable Developer Mode if iOS requires it. This route is not yet verified on our device.
+## Boundaries and recovery
 
-## iPhone acceptance test
+This repository contains a public, reusable command-entry engine, not the private FAIREX repository's operational data, secrets, or authority. The commands only take effect after the human submits them in the appropriate ChatGPT session.
 
-1. Open QuicKey once.
-2. Settings > General > Keyboard > Keyboards > Add New Keyboard > QuicKey.
-3. Leave **Allow Full Access** disabled.
-4. Open QuicKey test field, switch to QuicKey via globe, tap Hello. Expect exact insertion "Hello from QuicKey!".
-5. Tap Delete and use Next to change keyboards.
-6. In Safari, open google.com, tap search field, switch to QuicKey and tap Search. Expect "warehouse automation" to be inserted, **not** automatically submitted.
-7. Only after the iPhone test passes should we add snippet editing and persistent shared storage.
+The previously working v0.1 source remains at commit `3795cf62c8944d37c986c865360acd6c37652f8d`. Do not delete a working installation as a troubleshooting step: deletion can erase local keyboard history and sideloading data. A normal in-place update should preserve sandbox data but that is an on-device acceptance test, not a guarantee.
 
-**Free Apple provisioning is valid for only 7 days**; re-sign/refresh before expiration. Free accounts have device and App ID limits. The source and build cost are zero for GitHub's standard public-repository runners, but a long-lived keyboard with no maintenance is **not** possible through ordinary free Apple provisioning.
+See `docs/v0.2.2-history.md` and `docs/v0.2.3-color-design.md` for the storage and palette rules.
