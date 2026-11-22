@@ -24,7 +24,7 @@ final class HomeViewController: UIViewController {
         content.addArrangedSubview(header)
 
         let subtitle = UILabel()
-        subtitle.text = "QuicKey v0.2 inserts commands into text fields. It never executes them. The keyboard runs offline without Full Access."
+        subtitle.text = "QuicKey 0.2.1 is an offline FAIREX command composer. It inserts text into other apps; it does not submit or execute commands."
         subtitle.numberOfLines = 0
         subtitle.textColor = .secondaryLabel
         content.addArrangedSubview(subtitle)
@@ -32,7 +32,7 @@ final class HomeViewController: UIViewController {
         let steps = UILabel()
         steps.numberOfLines = 0
         steps.font = .preferredFont(forTextStyle: .body)
-        steps.text = "1. Settings > General > Keyboard > Keyboards > QuicKey.\n2. Leave Allow Full Access OFF.\n3. Focus the field below and select QuicKey using the globe key.\n4. Quick: insert FAST+DEEP and other ready prefixes.\n5. Roles: insert role entry.\n6. Build: select role, PR/Issue, style, enter digits, then Insert.\n7. Controls: insert verified helper commands."
+        steps.text = "1. Settings > General > Keyboard > Keyboards > QuicKey.\n2. Leave Allow Full Access OFF.\n3. Select QuicKey using the globe key in a normal text field.\n4. Start: select a role and insert the complete new-chat setup in one tap.\n5. Handle: select PR/Issue, type the number, + Add for extra targets, and Insert.\n6. Quick: common command prefixes.\n7. More: single-role entry and additional commands."
         content.addArrangedSubview(steps)
 
         let label = UILabel()
@@ -52,7 +52,7 @@ final class HomeViewController: UIViewController {
         content.addArrangedSubview(input)
 
         let note = UILabel()
-        note.text = "Example: Build > ENG > PR > Fast+Deep > 160 > Insert. The resulting text can be copied into a FAIREX chat and submitted manually. No commands are run automatically."
+        note.text = "Example: Start > CM1 > Start new chat. Or Handle > PR #160 > + Add > Issue #159 > + Add > Issue #6 > Insert. Templates are read-only text; sending the message is always your choice."
         note.numberOfLines = 0
         note.textColor = .secondaryLabel
         note.font = .preferredFont(forTextStyle: .footnote)

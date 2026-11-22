@@ -63,15 +63,17 @@ jobs:
           EXT_ID=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$EXT/Info.plist")
           test "$MAIN_ID" = 'org.quickey.prototype'
           test "$EXT_ID" = 'org.quickey.prototype.keyboard'
+          VERSION=$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Info.plist")
+          test "$VERSION" = '0.2.1'
           mkdir -p dist/Payload
           cp -R "$APP" dist/Payload/
-          (cd dist && zip -qr QuicKey-v0.2-unsigned.ipa Payload)
-          unzip -l dist/QuicKey-v0.2-unsigned.ipa | grep -q 'QuicKeyKeyboard.appex/Info.plist'
-          echo 'PASS: compiled app contains existing-ID keyboard extension.'
+          (cd dist && zip -qr QuicKey-v0.2.1-unsigned.ipa Payload)
+          unzip -l dist/QuicKey-v0.2.1-unsigned.ipa | grep -q 'QuicKeyKeyboard.appex/Info.plist'
+          echo 'PASS: app, keyboard extension, preserved IDs, no Full Access.'
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
-          name: QuicKey-v0.2-unsigned-IPA
-          path: dist/QuicKey-v0.2-unsigned.ipa
+          name: QuicKey-v0.2.1-unsigned-IPA
+          path: dist/QuicKey-v0.2.1-unsigned.ipa
           if-no-files-found: error
           retention-days: 14
