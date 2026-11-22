@@ -4,7 +4,18 @@ import UIKit
 /// UI: Start, Handle, Quick, Recent, More. Recent is keyboard-private.
 final class KeyboardViewController: UIInputViewController {
     private enum Page: Int {
-        case start, handle, quick, recent, more
+        case start, handle, quick, recent, more, settings
+
+        init(tab: KeyboardTab) {
+            switch tab {
+            case .start: self = .start
+            case .handle: self = .handle
+            case .quick: self = .quick
+            case .recent: self = .recent
+            case .more: self = .more
+            }
+        }
+
         var title: String {
             switch self {
             case .start: return "Start"
@@ -12,6 +23,7 @@ final class KeyboardViewController: UIInputViewController {
             case .quick: return "Quick"
             case .recent: return "Recent"
             case .more: return "More"
+            case .settings: return "Settings"
             }
         }
     }
@@ -45,6 +57,10 @@ final class KeyboardViewController: UIInputViewController {
     private var selectedKind: HandleKind = .pr
     private var selectedStyle: HandleStyle = .fastDeep
     private var includeRole = true
+    private var preferences = KeyboardPreferences.load()
+    private var pendingStartPrefix: String?
+    private weak var settingsScrollView: UIScrollView?
+    private var settingsScrollOffset: CGFloat = 0
     private var committedTargets: [HandleTarget] = []
     private var digits = ""
     private let promptHistory = PromptHistory()
@@ -70,6 +86,7 @@ final class KeyboardViewController: UIInputViewController {
            let role = CommandRole(rawValue: saved) {
             selectedRole = role
         }
+        includeRole = preferences.includeRoleByDefault
         view.backgroundColor = .secondarySystemBackground
         stack.axis = .vertical
         stack.spacing = 5
@@ -92,7 +109,7 @@ final class KeyboardViewController: UIInputViewController {
                         fontSize: CGFloat = 14, tone: KeyboardTone = .neutral) -> UIButton {
         let key = UIButton(type: .system)
         key.setTitle(text, for: .normal)
-        key.titleLabel?.font = .systemFont(ofSize: fontSize,
+        key.titleLabel?.font = .systemFont(ofSize: fontSize * CGFloat(preferences.fontSize.multiplier),
                                           weight: selected ? .semibold : .medium)
         key.titleLabel?.adjustsFontSizeToFitWidth = true
         key.titleLabel?.minimumScaleFactor = 0.73
@@ -119,7 +136,7 @@ final class KeyboardViewController: UIInputViewController {
     private func label(_ text: String, size: CGFloat = 12) -> UILabel {
         let element = UILabel()
         element.text = text
-        element.font = .systemFont(ofSize: size)
+        element.font = .systemFont(ofSize: size * CGFloat(preferences.fontSize.multiplier))
         element.textColor = .secondaryLabel
         element.numberOfLines = 0
         return element
@@ -144,6 +161,10 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func render() {
+        if let scroll = settingsScrollView {
+            settingsScrollOffset = scroll.contentOffset.y
+        }
+        settingsScrollView = nil
         numberLabel = nil
         previewView = nil
         insertButton = nil
@@ -152,10 +173,20 @@ final class KeyboardViewController: UIInputViewController {
             item.removeFromSuperview()
         }
 
-        let next = button("🌐 Next", id: "quickey-next", fontSize: 13)
+        // Apple's system keyboard switcher: tap advances to the next
+        // enabled keyboard, while touch-and-hold opens the native picker.
+        // iOS does not allow a keyboard extension to list or activate a
+        // specifically named third-party keyboard programmatically.
+        let next = button("🌐 Next\nHold to choose", id: "quickey-next", fontSize: 11)
+        next.titleLabel?.numberOfLines = 2
+        next.titleLabel?.textAlignment = .center
+        next.accessibilityLabel = "Next keyboard. Hold to choose a keyboard."
+        next.accessibilityHint = "Tap for the next keyboard, or touch and hold to select from Apple's enabled keyboard list."
         next.addTarget(self, action: #selector(handleInputModeList(from:with:)),
                        for: .allTouchEvents)
-        let heading = label("QuicKey 0.2.4", size: 12)
+        let currentVersion = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
+                              as? String) ?? "?"
+        let heading = label("QuicKey \(currentVersion)", size: 12)
         heading.textAlignment = .center
 
         let character = topIcon("delete.left", id: "quickey-delete-character",
@@ -186,11 +217,12 @@ final class KeyboardViewController: UIInputViewController {
         toolbar.axis = .horizontal
         toolbar.spacing = 4
         toolbar.distribution = .fill
-        next.widthAnchor.constraint(equalToConstant: 90).isActive = true
-        toolbar.heightAnchor.constraint(equalToConstant: 36).isActive = true
+        next.widthAnchor.constraint(equalToConstant: 96).isActive = true
+        toolbar.heightAnchor.constraint(equalToConstant: 40).isActive = true
         stack.addArrangedSubview(toolbar)
 
-        let tabs = [Page.start, .handle, .quick, .recent, .more].map { tab -> UIButton in
+        let tabs = preferences.tabOrder.map { entry -> UIButton in
+            let tab = Page(tab: entry)
             let key = button(tab.title, id: "quickey-page-\(tab.rawValue)",
                              selected: page == tab, fontSize: 13, tone: .navigation)
             key.tag = tab.rawValue
@@ -205,8 +237,15 @@ final class KeyboardViewController: UIInputViewController {
         case .quick: addShortcuts(shortcuts, prefix: "quick", action: #selector(insertQuick(_:)))
         case .recent: buildRecentPage()
         case .more: buildMorePage()
+        case .settings: buildSettingsPage()
         }
-        heightConstraint?.constant = page == .handle ? (previewExpanded ? 588 : 518) : (page == .more ? 353 : (page == .recent ? 365 : 294))
+        switch page {
+        case .handle: heightConstraint?.constant = previewExpanded ? 588 : 518
+        case .settings: heightConstraint?.constant = 510
+        case .more: heightConstraint?.constant = 450
+        case .recent: heightConstraint?.constant = 365
+        default: heightConstraint?.constant = 294
+        }
     }
 
     private func topIcon(_ symbol: String, id: String, help: String,
@@ -230,9 +269,16 @@ final class KeyboardViewController: UIInputViewController {
             DeletePlanner.matchesGeneratedSuffix(generated: activeGenerated,
                                                   beforeCursor: proxy.documentContextBeforeInput)
         let prior = sameContext ? activeGenerated : ""
+        let continuedStart = StartHandleContinuation.nextExpected(
+            expectedStart: pendingStartPrefix,
+            generated: activeGenerated,
+            sameDocument: activeDocumentID == proxy.documentIdentifier,
+            beforeCursor: proxy.documentContextBeforeInput,
+            inserted: text)
         proxy.insertText(text)
         activeDocumentID = proxy.documentIdentifier
         activeGenerated = prior + text
+        pendingStartPrefix = continuedStart
         promptHistory.saveReplacing(previous: sameContext ? prior : nil,
                                     with: activeGenerated)
         if clearArmed {
@@ -393,11 +439,157 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func buildMorePage() {
+        appendButton("⚙ Settings · fonts, tabs & defaults", id: "quickey-settings-open",
+                     action: #selector(openSettings), height: 36, tone: .navigation)
         stack.addArrangedSubview(label("Select a role, then insert its entry command:"))
         roleSelector()
         appendButton("Insert \(selectedRole.command)", id: "quickey-more-insert-role",
                      action: #selector(insertSelectedRole), height: 37, tone: .role)
         addShortcuts(controls, prefix: "control", action: #selector(insertControl(_:)))
+    }
+
+    /// Settings live in the keyboard extension's private store. The host app
+    /// cannot directly edit them without adding App Group entitlements.
+    private func buildSettingsPage() {
+        let scroll = UIScrollView()
+        scroll.alwaysBounceVertical = true
+        scroll.accessibilityIdentifier = "quickey-settings-scroll"
+        let list = UIStackView()
+        list.axis = .vertical
+        list.spacing = 6
+        list.translatesAutoresizingMaskIntoConstraints = false
+        scroll.addSubview(list)
+        NSLayoutConstraint.activate([
+            list.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor),
+            list.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),
+            list.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor),
+            list.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor),
+            list.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor)
+        ])
+
+        list.addArrangedSubview(label("Text size · applies to keys, labels & preview"))
+        let sizes = KeyboardFontSize.allCases.enumerated().map { index, choice -> UIButton in
+            let key = button(choice.title, id: "quickey-settings-font-\(choice.rawValue)",
+                             selected: preferences.fontSize == choice, tone: .navigation)
+            key.tag = index
+            key.addTarget(self, action: #selector(changeFontSize(_:)), for: .touchUpInside)
+            return key
+        }
+        list.addArrangedSubview(row(sizes, height: 42))
+
+        list.addArrangedSubview(label("Tab order · use arrows to move each tab"))
+        for (index, tab) in preferences.tabOrder.enumerated() {
+            let name = label(tab.title, size: 14)
+            name.textColor = .label
+            name.accessibilityLabel = "Tab position \(index + 1): \(tab.title)"
+            let up = button("↑", id: "quickey-settings-up-\(tab.rawValue)",
+                            tone: .navigation)
+            up.accessibilityLabel = "Move \(tab.title) tab left"
+            up.tag = index
+            up.isEnabled = index > 0
+            up.alpha = up.isEnabled ? 1 : 0.3
+            up.addTarget(self, action: #selector(moveTabLeft(_:)), for: .touchUpInside)
+            let down = button("↓", id: "quickey-settings-down-\(tab.rawValue)",
+                              tone: .navigation)
+            down.accessibilityLabel = "Move \(tab.title) tab right"
+            down.tag = index
+            down.isEnabled = index < preferences.tabOrder.count - 1
+            down.alpha = down.isEnabled ? 1 : 0.3
+            down.addTarget(self, action: #selector(moveTabRight(_:)), for: .touchUpInside)
+            let line = UIStackView(arrangedSubviews: [name, up, down])
+            line.axis = .horizontal
+            line.distribution = .fill
+            line.spacing = 6
+            up.widthAnchor.constraint(equalToConstant: 49).isActive = true
+            down.widthAnchor.constraint(equalToConstant: 49).isActive = true
+            line.heightAnchor.constraint(equalToConstant: 40).isActive = true
+            list.addArrangedSubview(line)
+        }
+
+        list.addArrangedSubview(label("Preferred role · shared by Start and Handle"))
+        let roles = CommandRole.allCases.enumerated().map { index, role -> UIButton in
+            let key = button(role.label, id: "quickey-settings-role-\(role.rawValue)",
+                             selected: selectedRole == role, fontSize: 12, tone: .role)
+            key.tag = index
+            key.addTarget(self, action: #selector(selectRole(_:)), for: .touchUpInside)
+            return key
+        }
+        list.addArrangedSubview(row(roles, height: 38))
+
+        let included = button(preferences.includeRoleByDefault
+                              ? "Handle default: Role ON ✓" : "Handle default: Role OFF",
+                              id: "quickey-settings-handle-role",
+                              selected: preferences.includeRoleByDefault, fontSize: 13,
+                              tone: .role)
+        included.addTarget(self, action: #selector(toggleDefaultHandleRole), for: .touchUpInside)
+        included.heightAnchor.constraint(equalToConstant: 39).isActive = true
+        list.addArrangedSubview(included)
+        list.addArrangedSubview(label(
+            "Start → Handle automatically omits the repeated role and boot prefix.", size: 11))
+
+        scroll.heightAnchor.constraint(equalToConstant: 363).isActive = true
+        stack.addArrangedSubview(scroll)
+        settingsScrollView = scroll
+        let savedOffset = settingsScrollOffset
+        DispatchQueue.main.async { [weak scroll] in
+            guard let scroll else { return }
+            let last = max(0, scroll.contentSize.height - scroll.bounds.height)
+            scroll.setContentOffset(CGPoint(x: 0, y: min(savedOffset, last)), animated: false)
+        }
+        appendButton("Done · return to More", id: "quickey-settings-done",
+                     action: #selector(closeSettings), height: 37, tone: .action)
+    }
+
+    @objc private func openSettings() {
+        settingsScrollOffset = 0
+        page = .settings
+        render()
+    }
+
+    @objc private func closeSettings() {
+        page = .more
+        render()
+    }
+
+    @objc private func changeFontSize(_ sender: UIButton) {
+        let choices = KeyboardFontSize.allCases
+        guard choices.indices.contains(sender.tag) else { return }
+        preferences.fontSize = choices[sender.tag]
+        preferences.save()
+        render()
+    }
+
+    @objc private func moveTabLeft(_ sender: UIButton) {
+        guard preferences.tabOrder.indices.contains(sender.tag) else { return }
+        if preferences.move(preferences.tabOrder[sender.tag], by: -1) {
+            preferences.save()
+            render()
+        }
+    }
+
+    @objc private func moveTabRight(_ sender: UIButton) {
+        guard preferences.tabOrder.indices.contains(sender.tag) else { return }
+        if preferences.move(preferences.tabOrder[sender.tag], by: 1) {
+            preferences.save()
+            render()
+        }
+    }
+
+    @objc private func toggleDefaultHandleRole() {
+        preferences.includeRoleByDefault.toggle()
+        preferences.save()
+        if !isPendingStartContinuation() {
+            includeRole = preferences.includeRoleByDefault
+        }
+        render()
+    }
+
+    private func isPendingStartContinuation() -> Bool {
+        StartHandleContinuation.isValid(
+            expectedStart: pendingStartPrefix,
+            generated: activeGenerated,
+            sameDocument: activeDocumentID == textDocumentProxy.documentIdentifier,
+            beforeCursor: textDocumentProxy.documentContextBeforeInput)
     }
 
     /// Only explicitly generated QuicKey prompts are stored in private defaults.
@@ -509,7 +701,8 @@ final class KeyboardViewController: UIInputViewController {
         stack.addArrangedSubview(row([withRole] + kindButtons, height: 30))
 
         let number = label("", size: 14)
-        number.font = .monospacedDigitSystemFont(ofSize: 14, weight: .medium)
+        number.font = .monospacedDigitSystemFont(
+            ofSize: 14 * CGFloat(preferences.fontSize.multiplier), weight: .medium)
         numberLabel = number
         let deleteDigit = button("⌫", id: "quickey-digit-delete")
         deleteDigit.addTarget(self, action: #selector(backspaceDigit), for: .touchUpInside)
@@ -558,7 +751,8 @@ final class KeyboardViewController: UIInputViewController {
         preview.showsVerticalScrollIndicator = true
         preview.backgroundColor = .tertiarySystemBackground
         preview.textColor = .label
-        preview.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        preview.font = .monospacedSystemFont(
+            ofSize: 12 * CGFloat(preferences.fontSize.multiplier), weight: .regular)
         preview.textContainer.maximumNumberOfLines = 0
         preview.textContainer.lineBreakMode = .byWordWrapping
         preview.textContainerInset = UIEdgeInsets(top: 7, left: 6, bottom: 7, right: 6)
@@ -615,7 +809,21 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     @objc private func selectPage(_ sender: UIButton) {
-        guard let selected = Page(rawValue: sender.tag) else { return }
+        guard let selected = Page(rawValue: sender.tag), selected != .settings else { return }
+        if selected == .handle && page != .handle {
+            if isPendingStartContinuation() {
+                selectedStyle = .direct
+                includeRole = false
+            } else {
+                if pendingStartPrefix != nil {
+                    // Restore a normal standalone Handle after the earlier
+                    // Start insertion is no longer at the current cursor.
+                    selectedStyle = .fastDeep
+                    pendingStartPrefix = nil
+                }
+                includeRole = preferences.includeRoleByDefault
+            }
+        }
         page = selected
         clearArmed = false
         confirmClearHistory = false
@@ -690,11 +898,16 @@ final class KeyboardViewController: UIInputViewController {
                                                        style: selectedStyle,
                                                        includeRole: includeRole) else { return }
         insertTracked(text)
+        // insertTracked advances the verified Start chain for all generated
+        // insertions, including Quick and Recent, not just this Handle path.
     }
 
     @objc private func insertNewChat() {
         let prefix = CommandTemplates.newChat(role: selectedRole)
         insertTracked(prefix)
+        // Track the full insertion chain, not only this prefix, so a Start
+        // inserted after earlier QuicKey text still avoids a duplicate role.
+        pendingStartPrefix = activeGenerated
         // Start Chat already contains the role and cmd.deep: prefix. When the
         // operator next opens Handle, generate only "git.handle ..." targets.
         selectedStyle = .direct

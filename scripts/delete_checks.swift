@@ -40,6 +40,40 @@ struct DeleteChecks {
         precondition(HandlePreviewText.composed(handle: nil, generated: startup,
                                                sameDocument: true, beforeCursor: startup) == nil)
         precondition(!DeletePlanner.matchesGeneratedSuffix(generated: startup, beforeCursor: "\n"))
+        let fresh = CommandTemplates.newChat(role: .custodian)
+        precondition(StartHandleContinuation.isValid(expectedStart: fresh, generated: fresh,
+                   sameDocument: true, beforeCursor: fresh))
+        precondition(StartHandleContinuation.isValid(expectedStart: fresh, generated: fresh,
+                   sameDocument: true, beforeCursor: String(fresh.suffix(35))))
+        let chained = fresh + "git.handle PR #160" + "git.handle Issue #159"
+        precondition(StartHandleContinuation.isValid(expectedStart: chained, generated: chained,
+                   sameDocument: true, beforeCursor: String(chained.suffix(35))))
+        precondition(!StartHandleContinuation.isValid(expectedStart: fresh,
+                    generated: fresh + "extra", sameDocument: true, beforeCursor: fresh + "extra"))
+        precondition(!StartHandleContinuation.isValid(expectedStart: fresh,
+                    generated: fresh, sameDocument: false, beforeCursor: fresh))
+        precondition(!StartHandleContinuation.isValid(expectedStart: fresh,
+                    generated: fresh, sameDocument: true, beforeCursor: "Unrelated text"))
+        precondition(!StartHandleContinuation.isValid(expectedStart: nil,
+                    generated: fresh, sameDocument: true, beforeCursor: fresh))
+        let quick = "cmd.refresh system"
+        let continued = StartHandleContinuation.nextExpected(
+            expectedStart: fresh, generated: fresh, sameDocument: true,
+            beforeCursor: fresh, inserted: quick)
+        precondition(continued == fresh + quick)
+        let second = StartHandleContinuation.nextExpected(
+            expectedStart: continued, generated: continued ?? "",
+            sameDocument: true, beforeCursor: String((fresh + quick).suffix(38)),
+            inserted: "git.handle Issue #6")
+        precondition(second == fresh + quick + "git.handle Issue #6")
+        precondition(StartHandleContinuation.nextExpected(
+            expectedStart: fresh, generated: fresh, sameDocument: false,
+            beforeCursor: fresh, inserted: quick) == nil)
+        precondition(StartHandleContinuation.nextExpected(
+            expectedStart: fresh, generated: fresh, sameDocument: true,
+            beforeCursor: "Unrelated context", inserted: quick) == nil)
+        print("PASS: Start→Handle continuation and intervening Quick/Recent insertion")
+        print("PASS: Start→Handle continuation guard and standalone-default fallback")
         print("PASS: full multiline Handle preview, combined Start+Handle, safe fallback")
 
         print("PASS: word/command deletion, grapheme-safe counts, clear-text guard")

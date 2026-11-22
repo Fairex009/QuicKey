@@ -68,3 +68,27 @@ enum HandlePreviewText {
         return handle
     }
 }
+
+
+/// Prevent duplicate role/boot text only when a just-inserted Start still
+/// occupies the active document suffix. Otherwise use the user's Handle default.
+enum StartHandleContinuation {
+    static func isValid(expectedStart: String?, generated: String,
+                        sameDocument: Bool, beforeCursor: String?) -> Bool {
+        guard let expectedStart, generated == expectedStart, sameDocument else { return false }
+        return DeletePlanner.matchesGeneratedSuffix(
+            generated: expectedStart, beforeCursor: beforeCursor)
+    }
+
+    /// Continue the verified Start chain after ANY QuicKey text insertion
+    /// (Handle, Quick, Recent, etc.). Do not accidentally restore the role
+    /// prefix merely because the user inserted another shortcut first.
+    static func nextExpected(expectedStart: String?, generated: String,
+                             sameDocument: Bool, beforeCursor: String?,
+                             inserted: String) -> String? {
+        guard isValid(expectedStart: expectedStart, generated: generated,
+                      sameDocument: sameDocument, beforeCursor: beforeCursor),
+              !inserted.isEmpty else { return nil }
+        return generated + inserted
+    }
+}
