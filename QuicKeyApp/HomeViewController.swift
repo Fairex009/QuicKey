@@ -24,7 +24,7 @@ final class HomeViewController: UIViewController {
         content.addArrangedSubview(header)
 
         let subtitle = UILabel()
-        subtitle.text = "QuicKey 0.2.2 is an offline FAIREX command composer. It inserts text into other apps; it does not submit or execute commands."
+        subtitle.text = "QuicKey 0.2.3 is an offline FAIREX command composer. It inserts text into other apps; it does not submit or execute commands."
         subtitle.numberOfLines = 0
         subtitle.textColor = .secondaryLabel
         content.addArrangedSubview(subtitle)

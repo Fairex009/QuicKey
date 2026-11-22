@@ -80,18 +80,31 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func button(_ text: String, id: String, selected: Bool = false,
-                        fontSize: CGFloat = 14) -> UIButton {
+                        fontSize: CGFloat = 14, tone: KeyboardTone = .neutral) -> UIButton {
         let key = UIButton(type: .system)
         key.setTitle(text, for: .normal)
         key.titleLabel?.font = .systemFont(ofSize: fontSize,
                                           weight: selected ? .semibold : .medium)
         key.titleLabel?.adjustsFontSizeToFitWidth = true
         key.titleLabel?.minimumScaleFactor = 0.73
-        key.backgroundColor = selected ? UIColor.systemIndigo.withAlphaComponent(0.2)
-                                       : .tertiarySystemBackground
-        key.layer.cornerRadius = 8
+        let colors = KeyboardTheme.colors(for: tone, selected: selected, traits: traitCollection)
+        key.backgroundColor = colors.background
+        key.setTitleColor(colors.foreground, for: .normal)
+        key.tintColor = colors.foreground
+        key.layer.borderWidth = selected ? 1.4 : (tone == .neutral ? 0.35 : 0.8)
+        key.layer.borderColor = colors.border.withAlphaComponent(selected ? 1 : 0.65).cgColor
+        key.layer.cornerRadius = 9
         key.accessibilityIdentifier = id
+        if selected { key.accessibilityTraits.insert(.selected) }
         return key
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+            view.backgroundColor = .secondarySystemBackground
+            render()
+        }
     }
 
     private func label(_ text: String, size: CGFloat = 12) -> UILabel {
@@ -113,8 +126,9 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func appendButton(_ title: String, id: String, action: Selector,
-                              height: CGFloat = 40, selected: Bool = false) {
-        let key = button(title, id: id, selected: selected)
+                              height: CGFloat = 40, selected: Bool = false,
+                              tone: KeyboardTone = .neutral) {
+        let key = button(title, id: id, selected: selected, tone: tone)
         key.addTarget(self, action: action, for: .touchUpInside)
         key.heightAnchor.constraint(equalToConstant: height).isActive = true
         stack.addArrangedSubview(key)
@@ -132,9 +146,9 @@ final class KeyboardViewController: UIInputViewController {
         let next = button("🌐 Next", id: "quickey-next", fontSize: 13)
         next.addTarget(self, action: #selector(handleInputModeList(from:with:)),
                        for: .allTouchEvents)
-        let heading = label("QuicKey 0.2.2", size: 12)
+        let heading = label("QuicKey 0.2.3", size: 12)
         heading.textAlignment = .center
-        let delete = button("⌫ Delete", id: "quickey-delete", fontSize: 13)
+        let delete = button("⌫ Delete", id: "quickey-delete", fontSize: 13, tone: .neutral)
         delete.addTarget(self, action: #selector(deleteCharacter), for: .touchUpInside)
 
         let toolbar = UIStackView(arrangedSubviews: [next, heading, delete])
@@ -148,7 +162,7 @@ final class KeyboardViewController: UIInputViewController {
 
         let tabs = [Page.start, .handle, .quick, .recent, .more].map { tab -> UIButton in
             let key = button(tab.title, id: "quickey-page-\(tab.rawValue)",
-                             selected: page == tab, fontSize: 13)
+                             selected: page == tab, fontSize: 13, tone: .navigation)
             key.tag = tab.rawValue
             key.addTarget(self, action: #selector(selectPage(_:)), for: .touchUpInside)
             return key
@@ -168,7 +182,7 @@ final class KeyboardViewController: UIInputViewController {
     private func roleSelector() {
         let keys = CommandRole.allCases.enumerated().map { index, role -> UIButton in
             let key = button(role.label, id: "quickey-role-\(role.rawValue)",
-                             selected: selectedRole == role, fontSize: 12)
+                             selected: selectedRole == role, fontSize: 12, tone: .role)
             key.tag = index
             key.addTarget(self, action: #selector(selectRole(_:)), for: .touchUpInside)
             return key
@@ -180,15 +194,15 @@ final class KeyboardViewController: UIInputViewController {
         stack.addArrangedSubview(label("Choose role (remembered):"))
         roleSelector()
         appendButton("Start new chat • \(selectedRole.command)", id: "quickey-start-chat",
-                     action: #selector(insertNewChat), height: 46, selected: true)
-        let fast = button("FAST+DEEP", id: "quickey-start-fast")
+                     action: #selector(insertNewChat), height: 46, selected: true, tone: .action)
+        let fast = button("FAST+DEEP", id: "quickey-start-fast", tone: .workflow)
         fast.addTarget(self, action: #selector(insertFastDeep), for: .touchUpInside)
-        let refresh = button("Refresh system", id: "quickey-start-refresh")
+        let refresh = button("Refresh system", id: "quickey-start-refresh", tone: .navigation)
         refresh.addTarget(self, action: #selector(insertRefresh), for: .touchUpInside)
         stack.addArrangedSubview(row([fast, refresh], height: 39))
-        let pr = button("git.handle PR #", id: "quickey-start-pr")
+        let pr = button("git.handle PR #", id: "quickey-start-pr", tone: .pr)
         pr.addTarget(self, action: #selector(insertPRPrefix), for: .touchUpInside)
-        let issue = button("git.handle Issue #", id: "quickey-start-issue")
+        let issue = button("git.handle Issue #", id: "quickey-start-issue", tone: .issue)
         issue.addTarget(self, action: #selector(insertIssuePrefix), for: .touchUpInside)
         stack.addArrangedSubview(row([pr, issue], height: 39))
         stack.addArrangedSubview(label("Start inserts your complete new-chat setup. No automatic submit."))
@@ -198,7 +212,21 @@ final class KeyboardViewController: UIInputViewController {
         for line in 0..<3 {
             let keys = (0..<2).map { column -> UIButton in
                 let index = line * 2 + column
-                let key = button(items[index].title, id: "quickey-\(prefix)-\(index)")
+                let tone: KeyboardTone
+                if items[index].title.contains("PR") {
+                    tone = .pr
+                } else if items[index].title.contains("Issue") {
+                    tone = .issue
+                } else if items[index].title.contains("DEEP") ||
+                          items[index].title.contains("Deep") ||
+                          items[index].title.contains("Batch") ||
+                          items[index].title.contains("Nonstop") ||
+                          items[index].title.contains("All-in-one") {
+                    tone = .workflow
+                } else {
+                    tone = .navigation
+                }
+                let key = button(items[index].title, id: "quickey-\(prefix)-\(index)", tone: tone)
                 key.tag = index
                 key.addTarget(self, action: action, for: .touchUpInside)
                 return key
@@ -212,7 +240,7 @@ final class KeyboardViewController: UIInputViewController {
         stack.addArrangedSubview(label("Select a role, then insert its entry command:"))
         roleSelector()
         appendButton("Insert \(selectedRole.command)", id: "quickey-more-insert-role",
-                     action: #selector(insertSelectedRole), height: 37)
+                     action: #selector(insertSelectedRole), height: 37, tone: .role)
         addShortcuts(controls, prefix: "control", action: #selector(insertControl(_:)))
     }
 
@@ -247,12 +275,12 @@ final class KeyboardViewController: UIInputViewController {
             summary.lineBreakMode = .byTruncatingTail
             summary.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-            let paste = button("Paste", id: "quickey-recent-paste-\(index)", selected: index == 0, fontSize: 12)
+            let paste = button("Paste", id: "quickey-recent-paste-\(index)", selected: index == 0, fontSize: 12, tone: .history)
             paste.tag = index
             paste.addTarget(self, action: #selector(pasteRecent(_:)), for: .touchUpInside)
             paste.widthAnchor.constraint(equalToConstant: 65).isActive = true
 
-            let remove = button("✕", id: "quickey-recent-remove-\(index)", fontSize: 15)
+            let remove = button("✕", id: "quickey-recent-remove-\(index)", fontSize: 15, tone: .danger)
             remove.tag = index
             remove.accessibilityLabel = "Delete saved prompt \(index + 1)"
             remove.addTarget(self, action: #selector(removeRecent(_:)), for: .touchUpInside)
@@ -268,7 +296,7 @@ final class KeyboardViewController: UIInputViewController {
         stack.addArrangedSubview(scroll)
 
         let caption = confirmClearHistory ? "Confirm deleting all saved prompts" : "Clear all history"
-        let clear = button(caption, id: "quickey-recent-clear", fontSize: 12)
+        let clear = button(caption, id: "quickey-recent-clear", fontSize: 12, tone: .danger)
         clear.addTarget(self, action: #selector(clearRecent), for: .touchUpInside)
         clear.isEnabled = !recentItems.isEmpty
         clear.heightAnchor.constraint(equalToConstant: 31).isActive = true
@@ -307,7 +335,7 @@ final class KeyboardViewController: UIInputViewController {
         roleSelector()
         let styleButtons = HandleStyle.allCases.enumerated().map { index, style -> UIButton in
             let key = button(style.label, id: "quickey-style-\(style.rawValue)",
-                             selected: selectedStyle == style, fontSize: 12)
+                             selected: selectedStyle == style, fontSize: 12, tone: .workflow)
             key.tag = index
             key.addTarget(self, action: #selector(selectStyle(_:)), for: .touchUpInside)
             return key
@@ -315,11 +343,11 @@ final class KeyboardViewController: UIInputViewController {
         stack.addArrangedSubview(row(styleButtons, height: 28))
 
         let withRole = button(includeRole ? "Role ✓" : "No role", id: "quickey-with-role",
-                              selected: includeRole, fontSize: 12)
+                              selected: includeRole, fontSize: 12, tone: .role)
         withRole.addTarget(self, action: #selector(toggleRole), for: .touchUpInside)
         let kindButtons = HandleKind.allCases.enumerated().map { index, kind -> UIButton in
             let key = button(kind.command, id: "quickey-kind-\(kind.rawValue)",
-                             selected: selectedKind == kind, fontSize: 13)
+                             selected: selectedKind == kind, fontSize: 13, tone: kind == .pr ? .pr : .issue)
             key.tag = index
             key.addTarget(self, action: #selector(selectKind(_:)), for: .touchUpInside)
             return key
@@ -354,6 +382,9 @@ final class KeyboardViewController: UIInputViewController {
 
         let preview = label("", size: 11)
         preview.textColor = .label
+        preview.backgroundColor = .tertiarySystemBackground
+        preview.layer.cornerRadius = 8
+        preview.clipsToBounds = true
         preview.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
         preview.numberOfLines = 5
         preview.lineBreakMode = .byTruncatingTail
@@ -364,9 +395,9 @@ final class KeyboardViewController: UIInputViewController {
 
         let undo = button("↶ Undo", id: "quickey-target-undo", fontSize: 12)
         undo.addTarget(self, action: #selector(undoTarget), for: .touchUpInside)
-        let add = button("+ Add", id: "quickey-target-add", fontSize: 12)
+        let add = button("+ Add", id: "quickey-target-add", fontSize: 12, tone: .pr)
         add.addTarget(self, action: #selector(addTarget), for: .touchUpInside)
-        let insert = button("Insert", id: "quickey-target-insert", selected: true)
+        let insert = button("Insert", id: "quickey-target-insert", selected: true, tone: .action)
         insert.addTarget(self, action: #selector(insertHandle), for: .touchUpInside)
         insertButton = insert
         stack.addArrangedSubview(row([undo, add, insert], height: 40))
@@ -387,6 +418,7 @@ final class KeyboardViewController: UIInputViewController {
                                                  style: selectedStyle, includeRole: includeRole)
         previewLabel?.text = text ?? "Select PR or Issue and enter a positive number."
         insertButton?.isEnabled = text != nil
+        insertButton?.alpha = text != nil ? 1.0 : 0.45
     }
 
     @objc private func selectPage(_ sender: UIButton) {
