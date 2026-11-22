@@ -1,15 +1,16 @@
 import UIKit
 
 /// Offline FAIREX text keyboard. Full Access, network access and App Groups are not required.
-/// UI is kept deliberately small: Start, Handle, Quick, More.
+/// UI: Start, Handle, Quick, Recent, More. Recent is keyboard-private.
 final class KeyboardViewController: UIInputViewController {
     private enum Page: Int {
-        case start, handle, quick, more
+        case start, handle, quick, recent, more
         var title: String {
             switch self {
             case .start: return "Start"
             case .handle: return "Handle"
             case .quick: return "Quick"
+            case .recent: return "Recent"
             case .more: return "More"
             }
         }
@@ -46,6 +47,10 @@ final class KeyboardViewController: UIInputViewController {
     private var includeRole = true
     private var committedTargets: [HandleTarget] = []
     private var digits = ""
+    private let promptHistory = PromptHistory()
+    private var pendingNewChat: String?
+    private var recentItems: [RecentPrompt] = []
+    private var confirmClearHistory = false
     private weak var numberLabel: UILabel?
     private weak var previewLabel: UILabel?
     private weak var insertButton: UIButton?
@@ -127,7 +132,7 @@ final class KeyboardViewController: UIInputViewController {
         let next = button("🌐 Next", id: "quickey-next", fontSize: 13)
         next.addTarget(self, action: #selector(handleInputModeList(from:with:)),
                        for: .allTouchEvents)
-        let heading = label("QuicKey 0.2.1", size: 12)
+        let heading = label("QuicKey 0.2.2", size: 12)
         heading.textAlignment = .center
         let delete = button("⌫ Delete", id: "quickey-delete", fontSize: 13)
         delete.addTarget(self, action: #selector(deleteCharacter), for: .touchUpInside)
@@ -141,7 +146,7 @@ final class KeyboardViewController: UIInputViewController {
         toolbar.heightAnchor.constraint(equalToConstant: 33).isActive = true
         stack.addArrangedSubview(toolbar)
 
-        let tabs = [Page.start, .handle, .quick, .more].map { tab -> UIButton in
+        let tabs = [Page.start, .handle, .quick, .recent, .more].map { tab -> UIButton in
             let key = button(tab.title, id: "quickey-page-\(tab.rawValue)",
                              selected: page == tab, fontSize: 13)
             key.tag = tab.rawValue
@@ -154,9 +159,10 @@ final class KeyboardViewController: UIInputViewController {
         case .start: buildStartPage()
         case .handle: buildHandlePage()
         case .quick: addShortcuts(shortcuts, prefix: "quick", action: #selector(insertQuick(_:)))
+        case .recent: buildRecentPage()
         case .more: buildMorePage()
         }
-        heightConstraint?.constant = page == .handle ? 434 : (page == .more ? 353 : 294)
+        heightConstraint?.constant = page == .handle ? 434 : (page == .more ? 353 : (page == .recent ? 365 : 294))
     }
 
     private func roleSelector() {
@@ -208,6 +214,93 @@ final class KeyboardViewController: UIInputViewController {
         appendButton("Insert \(selectedRole.command)", id: "quickey-more-insert-role",
                      action: #selector(insertSelectedRole), height: 37)
         addShortcuts(controls, prefix: "control", action: #selector(insertControl(_:)))
+    }
+
+    /// Only explicitly generated QuicKey prompts are stored in private defaults.
+    private func buildRecentPage() {
+        recentItems = promptHistory.all()
+        stack.addArrangedSubview(label("Last generated prompts · \(recentItems.count)/10", size: 11))
+
+        let scroll = UIScrollView()
+        scroll.alwaysBounceVertical = true
+        let list = UIStackView()
+        list.axis = .vertical
+        list.spacing = 4
+        list.translatesAutoresizingMaskIntoConstraints = false
+        scroll.addSubview(list)
+        NSLayoutConstraint.activate([
+            list.leadingAnchor.constraint(equalTo: scroll.contentLayoutGuide.leadingAnchor),
+            list.trailingAnchor.constraint(equalTo: scroll.contentLayoutGuide.trailingAnchor),
+            list.topAnchor.constraint(equalTo: scroll.contentLayoutGuide.topAnchor),
+            list.bottomAnchor.constraint(equalTo: scroll.contentLayoutGuide.bottomAnchor),
+            list.widthAnchor.constraint(equalTo: scroll.frameLayoutGuide.widthAnchor)
+        ])
+        scroll.heightAnchor.constraint(equalToConstant: 209).isActive = true
+
+        if recentItems.isEmpty {
+            list.addArrangedSubview(label("No complete prompts yet. Insert a Git Handle or Start Chat then Handle.", size: 12))
+        }
+
+        for (index, entry) in recentItems.enumerated() {
+            let summary = label(entry.text.replacingOccurrences(of: "\n", with: " · "), size: 11)
+            summary.numberOfLines = 2
+            summary.lineBreakMode = .byTruncatingTail
+            summary.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+            let paste = button("Paste", id: "quickey-recent-paste-\(index)", selected: index == 0, fontSize: 12)
+            paste.tag = index
+            paste.addTarget(self, action: #selector(pasteRecent(_:)), for: .touchUpInside)
+            paste.widthAnchor.constraint(equalToConstant: 65).isActive = true
+
+            let remove = button("✕", id: "quickey-recent-remove-\(index)", fontSize: 15)
+            remove.tag = index
+            remove.accessibilityLabel = "Delete saved prompt \(index + 1)"
+            remove.addTarget(self, action: #selector(removeRecent(_:)), for: .touchUpInside)
+            remove.widthAnchor.constraint(equalToConstant: 34).isActive = true
+
+            let line = UIStackView(arrangedSubviews: [summary, paste, remove])
+            line.axis = .horizontal
+            line.spacing = 5
+            line.distribution = .fill
+            line.heightAnchor.constraint(equalToConstant: 55).isActive = true
+            list.addArrangedSubview(line)
+        }
+        stack.addArrangedSubview(scroll)
+
+        let caption = confirmClearHistory ? "Confirm deleting all saved prompts" : "Clear all history"
+        let clear = button(caption, id: "quickey-recent-clear", fontSize: 12)
+        clear.addTarget(self, action: #selector(clearRecent), for: .touchUpInside)
+        clear.isEnabled = !recentItems.isEmpty
+        clear.heightAnchor.constraint(equalToConstant: 31).isActive = true
+        stack.addArrangedSubview(clear)
+        stack.addArrangedSubview(label("History is separate from iPhone clipboard. Full Access stays OFF.", size: 11))
+    }
+
+    @objc private func pasteRecent(_ sender: UIButton) {
+        guard recentItems.indices.contains(sender.tag) else { return }
+        let text = recentItems[sender.tag].text
+        textDocumentProxy.insertText(text)
+        promptHistory.save(text)
+        pendingNewChat = nil
+        confirmClearHistory = false
+        render()
+    }
+
+    @objc private func removeRecent(_ sender: UIButton) {
+        guard recentItems.indices.contains(sender.tag) else { return }
+        promptHistory.remove(id: recentItems[sender.tag].id)
+        confirmClearHistory = false
+        render()
+    }
+
+    @objc private func clearRecent() {
+        if confirmClearHistory {
+            promptHistory.clear()
+            confirmClearHistory = false
+        } else {
+            confirmClearHistory = true
+        }
+        render()
     }
 
     private func buildHandlePage() {
@@ -299,6 +392,7 @@ final class KeyboardViewController: UIInputViewController {
     @objc private func selectPage(_ sender: UIButton) {
         guard let selected = Page(rawValue: sender.tag) else { return }
         page = selected
+        confirmClearHistory = false
         render()
     }
 
@@ -370,10 +464,20 @@ final class KeyboardViewController: UIInputViewController {
                                                        style: selectedStyle,
                                                        includeRole: includeRole) else { return }
         textDocumentProxy.insertText(text)
+        // When Start Chat immediately precedes direct/no-role Handle, the two
+        // generated insertions represent one complete, reusable prompt.
+        if let start = pendingNewChat, selectedStyle == .direct && !includeRole {
+            promptHistory.save(start + text)
+        } else {
+            promptHistory.save(text)
+        }
+        pendingNewChat = nil
     }
 
     @objc private func insertNewChat() {
-        textDocumentProxy.insertText(CommandTemplates.newChat(role: selectedRole))
+        let prefix = CommandTemplates.newChat(role: selectedRole)
+        textDocumentProxy.insertText(prefix)
+        pendingNewChat = prefix
         // Start Chat already contains the role and cmd.deep: prefix. When the
         // operator next opens Handle, generate only "git.handle ..." targets.
         selectedStyle = .direct
