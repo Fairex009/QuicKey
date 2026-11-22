@@ -40,6 +40,20 @@ struct DeleteChecks {
         precondition(HandlePreviewText.composed(handle: nil, generated: startup,
                                                sameDocument: true, beforeCursor: startup) == nil)
         precondition(!DeletePlanner.matchesGeneratedSuffix(generated: startup, beforeCursor: "\n"))
+        let fresh = CommandTemplates.newChat(role: .custodian)
+        precondition(StartHandleContinuation.isValid(expectedStart: fresh, generated: fresh,
+                   sameDocument: true, beforeCursor: fresh))
+        precondition(StartHandleContinuation.isValid(expectedStart: fresh, generated: fresh,
+                   sameDocument: true, beforeCursor: String(fresh.suffix(35))))
+        precondition(!StartHandleContinuation.isValid(expectedStart: fresh,
+                    generated: fresh + "extra", sameDocument: true, beforeCursor: fresh + "extra"))
+        precondition(!StartHandleContinuation.isValid(expectedStart: fresh,
+                    generated: fresh, sameDocument: false, beforeCursor: fresh))
+        precondition(!StartHandleContinuation.isValid(expectedStart: fresh,
+                    generated: fresh, sameDocument: true, beforeCursor: "Unrelated text"))
+        precondition(!StartHandleContinuation.isValid(expectedStart: nil,
+                    generated: fresh, sameDocument: true, beforeCursor: fresh))
+        print("PASS: Start→Handle continuation guard and standalone-default fallback")
         print("PASS: full multiline Handle preview, combined Start+Handle, safe fallback")
 
         print("PASS: word/command deletion, grapheme-safe counts, clear-text guard")
