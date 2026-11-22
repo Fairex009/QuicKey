@@ -176,7 +176,9 @@ final class KeyboardViewController: UIInputViewController {
         let next = button("🌐 Next", id: "quickey-next", fontSize: 13)
         next.addTarget(self, action: #selector(handleInputModeList(from:with:)),
                        for: .allTouchEvents)
-        let heading = label("QuicKey 0.2.4", size: 12)
+        let currentVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString")
+            as? String ?? "?"
+        let heading = label("QuicKey \(currentVersion)", size: 12)
         heading.textAlignment = .center
 
         let character = topIcon("delete.left", id: "quickey-delete-character",
