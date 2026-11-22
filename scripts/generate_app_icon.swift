@@ -10,13 +10,15 @@ let output = URL(fileURLWithPath: CommandLine.arguments[1])
 try FileManager.default.createDirectory(at: output.deletingLastPathComponent(),
                                         withIntermediateDirectories: true)
 let size = 1024
-guard let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: size,
-                                    pixelsHigh: size, bitsPerSample: 8, samplesPerPixel: 3,
-                                    hasAlpha: false, isPlanar: false,
-                                    colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
-      let graphics = NSGraphicsContext(bitmapImageRep: bitmap) else {
-    fatalError("Unable to create icon bitmap")
+// CoreGraphics can allocate a bitmap on a headless GitHub runner. Using an
+// RGBX color space produces an opaque asset without an alpha channel.
+guard let bitmapContext = CGContext(data: nil, width: size, height: size,
+                                    bitsPerComponent: 8, bytesPerRow: 0,
+                                    space: CGColorSpaceCreateDeviceRGB(),
+                                    bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else {
+    fatalError("Unable to allocate CoreGraphics image context")
 }
+let graphics = NSGraphicsContext(cgContext: bitmapContext, flipped: false)
 func color(_ r: Int, _ g: Int, _ b: Int) -> NSColor {
     NSColor(calibratedRed: CGFloat(r)/255, green: CGFloat(g)/255,
             blue: CGFloat(b)/255, alpha: 1)
@@ -106,7 +108,8 @@ lightning.fill()
 
 graphics.flushGraphics()
 NSGraphicsContext.restoreGraphicsState()
-guard let data = bitmap.representation(using: .png, properties: [:]) else {
+guard let image = bitmapContext.makeImage(),
+      let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]) else {
     fatalError("Unable to encode PNG")
 }
 try data.write(to: output, options: [.atomic])
