@@ -61,3 +61,7 @@ See `docs/v0.2.2-history.md` and `docs/v0.2.4-color-design.md` for the storage a
 4. Tap top-right character delete to erase one grapheme. Hold to repeat. Tap word/command icon to erase a full recognized FAIREX command line or last ordinary word; hold to repeat.
 5. Tap trash icon once to arm, twice to clear only the QuicKey-generated text currently at the cursor. It must not delete unrelated surrounding text. Note that iOS may withhold text context: in that case QuicKey conservatively does nothing.
 6. Confirm app identity, keyboard extension, no new App ID, no Full Access, and two installed active apps in IPAForge after updating the current QuicKey.
+
+## Full scrollable Handle preview
+
+The Handle composer uses an internally scrollable, non-editable multiline text view rather than a five-line truncated label. It follows newly added PR/Issue numbers to the bottom while letting the user swipe up through every earlier line. The Compact/Expand control increases height on demand. When QuicKey can confirm that it inserted the immediately preceding Start template at the active cursor, Handle shows the complete combined Start + Handle command; otherwise it previews only the text that the Handle Insert button will add. The actual inserted text and existing app identifiers remain unchanged.

@@ -25,6 +25,10 @@ for key in ["quickey-page-", "quickey-role-", "quickey-digit-", "quickey-target-
 assert "promptHistory.saveReplacing(" in keyboard
 assert "insertTracked(" in keyboard
 assert "quickey-delete-unit" in keyboard and "quickey-clear-generated" in keyboard
+assert "UITextView()" in keyboard and "isScrollEnabled = true" in keyboard
+assert "quickey-preview-toggle" in keyboard and "scrollRangeToVisible" in keyboard
+assert "HandlePreviewText.composed(" in keyboard
+assert "preview.numberOfLines = 5" not in keyboard
 assert "ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon" in config
 theme = (root / "QuicKeyKeyboard/KeyboardTheme.swift").read_text()
 for tone in [".role", ".pr", ".issue", ".workflow", ".action", ".history", ".danger"]:

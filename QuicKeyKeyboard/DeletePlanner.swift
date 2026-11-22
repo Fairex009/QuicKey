@@ -40,12 +40,26 @@ enum DeletePlanner {
             return false
         }
         let overlap = min(Array(generated).count, Array(context).count)
-        guard overlap > 0 else { return false }
+        guard overlap >= min(8, Array(generated).count) else { return false }
         return Array(generated).suffix(overlap).elementsEqual(Array(context).suffix(overlap))
     }
 
     static func safeClearLength(generated: String, beforeCursor: String?) -> Int {
         matchesGeneratedSuffix(generated: generated, beforeCursor: beforeCursor)
             ? Array(generated).count : 0
+    }
+}
+
+/// Include the preceding generated Start template when the current host
+/// cursor still follows that same text; otherwise show only the Handle command.
+enum HandlePreviewText {
+    static func composed(handle: String?, generated: String,
+                         sameDocument: Bool, beforeCursor: String?) -> String? {
+        guard let handle else { return nil }
+        if sameDocument && DeletePlanner.matchesGeneratedSuffix(
+            generated: generated, beforeCursor: beforeCursor) {
+            return generated + handle
+        }
+        return handle
     }
 }

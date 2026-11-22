@@ -60,7 +60,8 @@ final class KeyboardViewController: UIInputViewController {
     private var recentItems: [RecentPrompt] = []
     private var confirmClearHistory = false
     private weak var numberLabel: UILabel?
-    private weak var previewLabel: UILabel?
+    private weak var previewView: UITextView?
+    private var previewExpanded = false
     private weak var insertButton: UIButton?
 
     override func viewDidLoad() {
@@ -144,7 +145,7 @@ final class KeyboardViewController: UIInputViewController {
 
     private func render() {
         numberLabel = nil
-        previewLabel = nil
+        previewView = nil
         insertButton = nil
         for item in stack.arrangedSubviews {
             stack.removeArrangedSubview(item)
@@ -205,7 +206,7 @@ final class KeyboardViewController: UIInputViewController {
         case .recent: buildRecentPage()
         case .more: buildMorePage()
         }
-        heightConstraint?.constant = page == .handle ? 434 : (page == .more ? 353 : (page == .recent ? 365 : 294))
+        heightConstraint?.constant = page == .handle ? (previewExpanded ? 588 : 518) : (page == .more ? 353 : (page == .recent ? 365 : 294))
     }
 
     private func topIcon(_ symbol: String, id: String, help: String,
@@ -529,18 +530,41 @@ final class KeyboardViewController: UIInputViewController {
             stack.addArrangedSubview(row(keys, height: 37))
         }
 
-        let preview = label("", size: 11)
-        preview.textColor = .label
+        // Full text with internal vertical scrolling, not a truncated UILabel.
+        let previewHeading = label("Live preview · swipe to scroll", size: 11)
+        previewHeading.numberOfLines = 1
+        let expand = button(previewExpanded ? "Compact" : "Expand",
+                            id: "quickey-preview-toggle", fontSize: 12, tone: .navigation)
+        expand.accessibilityLabel = previewExpanded
+            ? "Collapse live preview" : "Expand live preview"
+        expand.addTarget(self, action: #selector(togglePreviewExpanded), for: .touchUpInside)
+        let previewBar = UIStackView(arrangedSubviews: [previewHeading, expand])
+        previewBar.axis = .horizontal
+        previewBar.alignment = .center
+        previewBar.spacing = 4
+        expand.widthAnchor.constraint(equalToConstant: 75).isActive = true
+        previewBar.heightAnchor.constraint(equalToConstant: 25).isActive = true
+        stack.addArrangedSubview(previewBar)
+
+        let preview = UITextView()
+        preview.isEditable = false
+        preview.isSelectable = false
+        preview.isScrollEnabled = true
+        preview.alwaysBounceVertical = true
+        preview.showsVerticalScrollIndicator = true
         preview.backgroundColor = .tertiarySystemBackground
+        preview.textColor = .label
+        preview.font = .monospacedSystemFont(ofSize: 12, weight: .regular)
+        preview.textContainer.maximumNumberOfLines = 0
+        preview.textContainer.lineBreakMode = .byWordWrapping
+        preview.textContainerInset = UIEdgeInsets(top: 7, left: 6, bottom: 7, right: 6)
         preview.layer.cornerRadius = 8
         preview.clipsToBounds = true
-        preview.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
-        preview.numberOfLines = 5
-        preview.lineBreakMode = .byTruncatingTail
         preview.accessibilityIdentifier = "quickey-handle-preview"
-        preview.heightAnchor.constraint(equalToConstant: 64).isActive = true
+        preview.accessibilityLabel = "Full scrollable live command preview"
+        preview.heightAnchor.constraint(equalToConstant: previewExpanded ? 184 : 114).isActive = true
         stack.addArrangedSubview(preview)
-        previewLabel = preview
+        previewView = preview
 
         let undo = button("↶ Undo", id: "quickey-target-undo", fontSize: 12)
         undo.addTarget(self, action: #selector(undoTarget), for: .touchUpInside)
@@ -565,9 +589,25 @@ final class KeyboardViewController: UIInputViewController {
         let targets = pendingTargets() ?? []
         let text = CommandTemplates.composeMulti(role: selectedRole, targets: targets,
                                                  style: selectedStyle, includeRole: includeRole)
-        previewLabel?.text = text ?? "Select PR or Issue and enter a positive number."
+        let displayed = HandlePreviewText.composed(
+            handle: text,
+            generated: activeGenerated,
+            sameDocument: activeDocumentID == textDocumentProxy.documentIdentifier,
+            beforeCursor: textDocumentProxy.documentContextBeforeInput
+        ) ?? "Select PR or Issue and enter a positive number."
+        if let view = previewView {
+            view.text = displayed
+            view.layoutIfNeeded()
+            let last = NSRange(location: (displayed as NSString).length, length: 0)
+            view.scrollRangeToVisible(last)
+        }
         insertButton?.isEnabled = text != nil
         insertButton?.alpha = text != nil ? 1.0 : 0.45
+    }
+
+    @objc private func togglePreviewExpanded() {
+        previewExpanded.toggle()
+        render()
     }
 
     @objc private func selectPage(_ sender: UIButton) {

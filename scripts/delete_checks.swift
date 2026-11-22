@@ -21,6 +21,20 @@ struct DeleteChecks {
         precondition(DeletePlanner.matchesGeneratedSuffix(generated: a, beforeCursor: String(a.suffix(25))))
         precondition(!DeletePlanner.matchesGeneratedSuffix(generated: a, beforeCursor: "different text"))
         precondition(DeletePlanner.safeClearLength(generated: a, beforeCursor: nil) == 0)
+        let startup = "res.cm1\n\ncmd.boot AGENTS.md\n\ncmd.deep:\n"
+        let mixed = "git.handle PR #160, Issue #159, Issue #6"
+        precondition(HandlePreviewText.composed(handle: mixed, generated: startup,
+                                               sameDocument: true, beforeCursor: startup) ==
+                     startup + mixed)
+        precondition(HandlePreviewText.composed(handle: mixed, generated: startup,
+                                               sameDocument: false, beforeCursor: startup) == mixed)
+        precondition(HandlePreviewText.composed(handle: mixed, generated: startup,
+                                               sameDocument: true, beforeCursor: "Unrelated host text") == mixed)
+        precondition(HandlePreviewText.composed(handle: nil, generated: startup,
+                                               sameDocument: true, beforeCursor: startup) == nil)
+        precondition(!DeletePlanner.matchesGeneratedSuffix(generated: startup, beforeCursor: "\n"))
+        print("PASS: full multiline Handle preview, combined Start+Handle, safe fallback")
+
         print("PASS: word/command deletion, grapheme-safe counts, clear-text guard")
     }
 }

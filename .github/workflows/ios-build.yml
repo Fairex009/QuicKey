@@ -35,6 +35,8 @@ jobs:
           swiftc QuicKeyKeyboard/DeletePlanner.swift scripts/delete_checks.swift -o /tmp/quickey-delete-checks
           /tmp/quickey-delete-checks
           /tmp/quickey-template-checks
+      - name: Validate scrollable preview and source structure
+        run: python3 scripts/verify_source.py
       - name: Generate the 1024-pixel app icon
         run: |
           set -euo pipefail
