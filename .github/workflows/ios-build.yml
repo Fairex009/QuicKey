@@ -34,7 +34,7 @@ jobs:
         run: |
           set -euo pipefail
           swiftc QuicKeyKeyboard/CommandTemplates.swift QuicKeyKeyboard/PromptHistory.swift scripts/template_checks.swift -o /tmp/quickey-template-checks
-          swiftc QuicKeyKeyboard/DeletePlanner.swift scripts/delete_checks.swift -o /tmp/quickey-delete-checks
+          swiftc QuicKeyKeyboard/CommandTemplates.swift QuicKeyKeyboard/DeletePlanner.swift scripts/delete_checks.swift -o /tmp/quickey-delete-checks
           /tmp/quickey-delete-checks
           /tmp/quickey-template-checks
           swiftc QuicKeyKeyboard/KeyboardPreferences.swift scripts/preferences_checks.swift -o /tmp/quickey-preferences-checks
