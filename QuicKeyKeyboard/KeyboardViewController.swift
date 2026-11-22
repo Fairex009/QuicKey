@@ -374,6 +374,12 @@ final class KeyboardViewController: UIInputViewController {
 
     @objc private func insertNewChat() {
         textDocumentProxy.insertText(CommandTemplates.newChat(role: selectedRole))
+        // Start Chat already contains the role and cmd.deep: prefix. When the
+        // operator next opens Handle, generate only "git.handle ..." targets.
+        selectedStyle = .direct
+        includeRole = false
+        committedTargets = []
+        digits = ""
     }
 
     @objc private func insertFastDeep() {
