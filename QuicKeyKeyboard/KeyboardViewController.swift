@@ -222,15 +222,15 @@ final class KeyboardViewController: UIInputViewController {
 
         let removeNumber = button("⌫", id: "quickey-number-delete")
         removeNumber.addTarget(self, action: #selector(deleteNumber), for: .touchUpInside)
-        let clearNumber = button("Clear", id: "quickey-number-clear", fontSize: 12)
-        clearNumber.addTarget(self, action: #selector(clearNumber), for: .touchUpInside)
+        let clearNumberButton = button("Clear", id: "quickey-number-clear", fontSize: 12)
+        clearNumberButton.addTarget(self, action: #selector(clearNumber), for: .touchUpInside)
 
-        let numberRow = UIStackView(arrangedSubviews: [numberLabel, removeNumber, clearNumber])
+        let numberRow = UIStackView(arrangedSubviews: [numberLabel, removeNumber, clearNumberButton])
         numberRow.axis = .horizontal
         numberRow.spacing = 5
         numberRow.distribution = .fill
         removeNumber.widthAnchor.constraint(equalToConstant: 50).isActive = true
-        clearNumber.widthAnchor.constraint(equalToConstant: 63).isActive = true
+        clearNumberButton.widthAnchor.constraint(equalToConstant: 63).isActive = true
         numberRow.heightAnchor.constraint(equalToConstant: 30).isActive = true
         stack.addArrangedSubview(numberRow)
 
