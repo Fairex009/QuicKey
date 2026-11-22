@@ -69,7 +69,7 @@ enum HandlePreviewText {
     }
 }
 
-    
+
 /// Prevent duplicate role/boot text only when a just-inserted Start still
 /// occupies the active document suffix. Otherwise use the user's Handle default.
 enum StartHandleContinuation {
