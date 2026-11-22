@@ -26,6 +26,11 @@ assert (root / "QuicKeyKeyboard/KeyboardPreferences.swift").is_file()
 assert (root / "scripts/preferences_checks.swift").is_file()
 assert 'preferences.tabOrder.map' in keyboard
 assert 'quickey-settings-open' in keyboard and 'quickey-settings-done' in keyboard
+assert 'Hold to choose' in keyboard
+assert 'handleInputModeList(from:with:)' in keyboard
+assert 'for: .allTouchEvents' in keyboard
+assert 'next.titleLabel?.numberOfLines = 2' in keyboard
+assert 'next.accessibilityLabel = "Next keyboard. Hold to choose a keyboard."' in keyboard
 assert 'case .settings: buildSettingsPage()' in keyboard
 assert 'preferences.includeRoleByDefault' in keyboard
 assert 'preferences.fontSize.multiplier' in keyboard
